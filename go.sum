@@ -1,0 +1,6 @@
+github.com/google/uuid v1.2.0 h1:qJYtXnJRWmpe7m/3XlyhrsLrEURqHRM2kxzoxXqyUDs=
+github.com/google/uuid v1.2.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+gitlab.com/tsuchinaga/jpx-business-day v0.0.0-20210505183823-fc36361dc174 h1:kuT37hFH4J2aEauSs3EuAvu0HTFbXQnlQW4zPfFMAnI=
+gitlab.com/tsuchinaga/jpx-business-day v0.0.0-20210505183823-fc36361dc174/go.mod h1:W2ilKuO2oW04qc0gPlf63gyAwrInrZCbVXoQZkKozXc=
+gitlab.com/tsuchinaga/jpx-business-day v0.0.1 h1:uYDVrDzhciSLXZ9Cm0GlmF3CZp1lPoE2l0pnbRKyKic=
+gitlab.com/tsuchinaga/jpx-business-day v0.0.1/go.mod h1:W2ilKuO2oW04qc0gPlf63gyAwrInrZCbVXoQZkKozXc=
