@@ -312,3 +312,31 @@ func Test_StockExecutionCondition_IsFunari(t *testing.T) {
 		})
 	}
 }
+
+func Test_OrderStatus_IsCancelable(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		orderStatus OrderStatus
+		want        bool
+	}{
+		{name: "未指定 は取消できない", orderStatus: OrderStatusUnspecified, want: false},
+		{name: "新規 は取消できる", orderStatus: OrderStatusNew, want: true},
+		{name: "注文中 は取消できる", orderStatus: OrderStatusInOrder, want: true},
+		{name: "部分約定 は取消できる", orderStatus: OrderStatusPart, want: true},
+		{name: "全約定 は取消できる", orderStatus: OrderStatusDone, want: false},
+		{name: "取消中 は取消できる", orderStatus: OrderStatusInCancel, want: false},
+		{name: "取消済み は取消できる", orderStatus: OrderStatusCanceled, want: false},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got := test.orderStatus.IsCancelable()
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}

@@ -775,3 +775,98 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 		})
 	}
 }
+
+func Test_StockOrder_contract(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                   string
+		stockOrder             *StockOrder
+		arg                    *Contract
+		wantContractedQuantity float64
+		wantStatus             OrderStatus
+	}{
+		{name: "引数がnilなら何もしない",
+			stockOrder:             &StockOrder{OrderQuantity: 3, ContractedQuantity: 0, OrderStatus: OrderStatusUnspecified},
+			arg:                    nil,
+			wantContractedQuantity: 0,
+			wantStatus:             OrderStatusUnspecified},
+		{name: "約定後、約定数量が0なら注文中",
+			stockOrder:             &StockOrder{OrderQuantity: 3, ContractedQuantity: 0, OrderStatus: OrderStatusUnspecified},
+			arg:                    &Contract{Quantity: 0},
+			wantContractedQuantity: 0,
+			wantStatus:             OrderStatusInOrder},
+		{name: "約定後、約定数量が注文数量未満なら部分約定",
+			stockOrder:             &StockOrder{OrderQuantity: 3, ContractedQuantity: 0, OrderStatus: OrderStatusUnspecified},
+			arg:                    &Contract{Quantity: 1},
+			wantContractedQuantity: 1,
+			wantStatus:             OrderStatusPart},
+		{name: "約定後、約定数量が注文数量以上なら全約定",
+			stockOrder:             &StockOrder{OrderQuantity: 3, ContractedQuantity: 1, OrderStatus: OrderStatusUnspecified},
+			arg:                    &Contract{Quantity: 2},
+			wantContractedQuantity: 3,
+			wantStatus:             OrderStatusDone},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			test.stockOrder.contract(test.arg)
+			got1 := test.stockOrder.ContractedQuantity
+			got2 := test.stockOrder.OrderStatus
+			if !reflect.DeepEqual(test.wantContractedQuantity, got1) || !reflect.DeepEqual(test.wantStatus, got2) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.wantContractedQuantity, test.wantStatus, got1, got2)
+			}
+		})
+	}
+}
+
+func Test_StockOrder_cancel(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name            string
+		stockOrder      *StockOrder
+		arg             time.Time
+		wantOrderStatus OrderStatus
+		wantCanceledAt  time.Time
+	}{
+		{name: "ステータスがnewなら取消状態に更新",
+			stockOrder:      &StockOrder{OrderStatus: OrderStatusNew},
+			arg:             time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local),
+			wantOrderStatus: OrderStatusCanceled,
+			wantCanceledAt:  time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local)},
+		{name: "ステータスがin_orderなら取消状態に更新",
+			stockOrder:      &StockOrder{OrderStatus: OrderStatusInOrder},
+			arg:             time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local),
+			wantOrderStatus: OrderStatusCanceled,
+			wantCanceledAt:  time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local)},
+		{name: "ステータスがpartなら取消状態に更新",
+			stockOrder:      &StockOrder{OrderStatus: OrderStatusPart},
+			arg:             time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local),
+			wantOrderStatus: OrderStatusCanceled,
+			wantCanceledAt:  time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local)},
+		{name: "ステータスがdoneなら取消状態に更新できない",
+			stockOrder:      &StockOrder{OrderStatus: OrderStatusDone},
+			arg:             time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local),
+			wantOrderStatus: OrderStatusDone,
+			wantCanceledAt:  time.Time{}},
+		{name: "ステータスがcanceledなら取消状態に更新できない",
+			stockOrder:      &StockOrder{OrderStatus: OrderStatusCanceled, CanceledAt: time.Date(2021, 5, 18, 10, 0, 0, 0, time.Local)},
+			arg:             time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local),
+			wantOrderStatus: OrderStatusCanceled,
+			wantCanceledAt:  time.Date(2021, 5, 18, 10, 0, 0, 0, time.Local)},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			test.stockOrder.cancel(test.arg)
+			got1 := test.stockOrder.OrderStatus
+			got2 := test.stockOrder.CanceledAt
+			if !reflect.DeepEqual(test.wantOrderStatus, got1) || !reflect.DeepEqual(test.wantCanceledAt, got2) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.wantOrderStatus, test.wantCanceledAt, got1, got2)
+			}
+		})
+	}
+}

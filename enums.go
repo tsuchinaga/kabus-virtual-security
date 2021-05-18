@@ -53,6 +53,14 @@ func (e OrderStatus) IsFixed() bool {
 	return false
 }
 
+func (e OrderStatus) IsCancelable() bool {
+	switch e {
+	case OrderStatusNew, OrderStatusInOrder, OrderStatusPart:
+		return true
+	}
+	return false
+}
+
 // StockExecutionCondition - 執行条件
 type StockExecutionCondition string
 

@@ -19,7 +19,8 @@ type StockOrder struct {
 	LimitPrice         float64                 // 指値価格
 	ExpiredAt          time.Time               // 有効期限
 	OrderedAt          time.Time               // 注文日時
-	Contracts          []Contract              // 約定一覧
+	CanceledAt         time.Time               // 取消日時
+	Contracts          []*Contract             // 約定一覧
 	ConfirmingCount    int
 	mtx                sync.Mutex
 }
@@ -279,7 +280,11 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 	return &confirmContractResult{isContracted: false}
 }
 
-func (o *StockOrder) contract(contract Contract) {
+func (o *StockOrder) contract(contract *Contract) {
+	if contract == nil {
+		return
+	}
+
 	o.mtx.Lock()
 	defer o.mtx.Unlock()
 
@@ -295,9 +300,12 @@ func (o *StockOrder) contract(contract Contract) {
 	}
 }
 
-func (o *StockOrder) cancel() {
+func (o *StockOrder) cancel(canceledAt time.Time) {
 	o.mtx.Lock()
 	defer o.mtx.Unlock()
 
-	o.OrderStatus = OrderStatusCanceled
+	if o.OrderStatus.IsCancelable() {
+		o.CanceledAt = canceledAt
+		o.OrderStatus = OrderStatusCanceled
+	}
 }
