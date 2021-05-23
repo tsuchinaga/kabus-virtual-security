@@ -15,6 +15,20 @@ type SymbolPrice struct {
 	kind       PriceKind // 種別
 }
 
+func (e *SymbolPrice) MaxTime() time.Time {
+	var maxTime time.Time
+	if maxTime.Before(e.PriceTime) {
+		maxTime = e.PriceTime
+	}
+	if maxTime.Before(e.BidTime) {
+		maxTime = e.BidTime
+	}
+	if maxTime.Before(e.AskTime) {
+		maxTime = e.AskTime
+	}
+	return maxTime
+}
+
 // SessionInfo - セッション情報
 type SessionInfo struct {
 	Session Session // セッション

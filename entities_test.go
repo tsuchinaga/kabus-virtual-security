@@ -68,7 +68,7 @@ func Test_StockOrder_isContractableTime(t *testing.T) {
 	}
 }
 
-func Test_StockOrder_confirmContractAuctionMO(t *testing.T) {
+func Test_StockOrder_confirmContractItayoseMO(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
@@ -125,7 +125,7 @@ func Test_StockOrder_confirmContractAuctionMO(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got := test.stockOrder.confirmContractAuctionMO(test.arg1, test.arg2)
+			got := test.stockOrder.confirmContractItayoseMO(test.arg1, test.arg2)
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
@@ -176,7 +176,7 @@ func Test_StockOrder_confirmContractRegularMO(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got := test.stockOrder.confirmContractRegularMO(test.arg1, test.arg2)
+			got := test.stockOrder.confirmContractAuctionMO(test.arg1, test.arg2)
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
@@ -184,7 +184,7 @@ func Test_StockOrder_confirmContractRegularMO(t *testing.T) {
 	}
 }
 
-func Test_StockOrder_confirmContractAuctionLO(t *testing.T) {
+func Test_StockOrder_confirmContractItayoseLO(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
@@ -306,7 +306,7 @@ func Test_StockOrder_confirmContractAuctionLO(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got := test.stockOrder.confirmContractAuctionLO(test.arg1, test.arg2)
+			got := test.stockOrder.confirmContractItayoseLO(test.arg1, test.arg2)
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
@@ -377,7 +377,7 @@ func Test_StockOrder_confirmContractRegularLO(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got := test.stockOrder.confirmContractRegularLO(test.arg1, test.arg2)
+			got := test.stockOrder.confirmContractAuctionLO(test.arg1, test.arg2)
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}

@@ -32,11 +32,11 @@ func (o *StockOrder) isContractableTime(session Session) bool {
 		(o.ExecutionCondition.IsContractableAfternoonSessionClosing() && session == SessionAfternoon)
 }
 
-// confirmContractAuctionMO - オークション形式での成行注文の約定確認と約定した場合の結果
-//   オークション形式では、5s以内の現値があれば現値で約定する
+// confirmContractItayoseMO - 板寄せ方式での成行注文の約定確認と約定した場合の結果
+//   板寄せ方式では、5s以内の現値があれば現値で約定する
 //   5s以内の現値がなくても、買い注文で売り気配値があれば売り気配値で約定する
 //   5s以内の現値がなくても、売り注文で買い気配値があれば買い気配値で約定する
-func (o *StockOrder) confirmContractAuctionMO(price SymbolPrice, now time.Time) *confirmContractResult {
+func (o *StockOrder) confirmContractItayoseMO(price SymbolPrice, now time.Time) *confirmContractResult {
 	result := &confirmContractResult{isContracted: false}
 	if price.Price > 0 && now.Add(-5*time.Second).Before(price.PriceTime) {
 		result.isContracted = true
@@ -54,10 +54,10 @@ func (o *StockOrder) confirmContractAuctionMO(price SymbolPrice, now time.Time) 
 	return result
 }
 
-// confirmContractRegularMO - ザラバでの成行注文の約定確認と約定した場合の結果
+// confirmContractAuctionMO - オークション方式での成行注文の約定確認と約定した場合の結果
 //   買い注文で売り気配値があれば売り気配値で約定する
 //   売り注文で買い気配値があれば買い気配値で約定する
-func (o *StockOrder) confirmContractRegularMO(price SymbolPrice, now time.Time) *confirmContractResult {
+func (o *StockOrder) confirmContractAuctionMO(price SymbolPrice, now time.Time) *confirmContractResult {
 	result := &confirmContractResult{isContracted: false}
 	if o.Side == SideBuy && price.Bid > 0 {
 		result.isContracted = true
@@ -71,13 +71,13 @@ func (o *StockOrder) confirmContractRegularMO(price SymbolPrice, now time.Time) 
 	return result
 }
 
-// confirmContractAuctionLO - オークション形式での指値注文の約定確認と約定した場合の結果
-//   オークション形式では、5s以内の現値があれば現値で約定確認を行なう
+// confirmContractItayoseLO - 板寄せ方式での指値注文の約定確認と約定した場合の結果
+//   板寄せ方式では、5s以内の現値があれば現値で約定確認を行なう
 //   買い注文の場合、現値が指値価格以下なら約定する
 //   売り注文の場合、現値が指値価格以上なら約定する
 //   5s以内の現値がなくても、買い注文で売り気配値があり、指値価格より売り気配値が安ければ約定する
 //   5s以内の現値がなくても、売り注文で買い気配値があり、指値価格より買い気配値が高ければ約定する
-func (o *StockOrder) confirmContractAuctionLO(price SymbolPrice, now time.Time) *confirmContractResult {
+func (o *StockOrder) confirmContractItayoseLO(price SymbolPrice, now time.Time) *confirmContractResult {
 	result := &confirmContractResult{isContracted: false}
 	if price.Price > 0 && now.Add(-5*time.Second).Before(price.PriceTime) {
 		if o.Side == SideBuy && o.LimitPrice >= price.Price {
@@ -103,7 +103,10 @@ func (o *StockOrder) confirmContractAuctionLO(price SymbolPrice, now time.Time) 
 	return result
 }
 
-func (o *StockOrder) confirmContractRegularLO(price SymbolPrice, now time.Time) *confirmContractResult {
+// confirmContractAuctionLO - オークション方式での指値注文の約定確認と約定した場合の結果
+//   買い注文で売り気配値があり、指値価格より売り気配値が安ければ約定する
+//   売り注文で買い気配値があり、指値価格より買い気配値が高ければ約定する
+func (o *StockOrder) confirmContractAuctionLO(price SymbolPrice, now time.Time) *confirmContractResult {
 	result := &confirmContractResult{isContracted: false}
 	if o.Side == SideBuy && price.Bid > 0 && o.LimitPrice > price.Bid {
 		result.isContracted = true
@@ -153,9 +156,9 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 		// 価格情報がザラバなら気配値がある場合に限り気配値で約定
 		switch price.kind {
 		case PriceKindOpening, PriceKindClosing:
-			return o.confirmContractAuctionMO(price, now)
+			return o.confirmContractItayoseMO(price, now)
 		case PriceKindRegular:
-			return o.confirmContractRegularMO(price, now)
+			return o.confirmContractAuctionMO(price, now)
 		}
 	case StockExecutionConditionMOMO, StockExecutionConditionMOAO: // 寄成(前場), 寄成(後場)
 		// 初回約定確認なら確認をし、初回でなければ何もしない
@@ -166,7 +169,7 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 		}
 
 		if price.kind == PriceKindOpening {
-			return o.confirmContractAuctionMO(price, now)
+			return o.confirmContractItayoseMO(price, now)
 		}
 	case StockExecutionConditionMOMC, StockExecutionConditionMOAC: // 引成(前場), 引成(後場)
 		// 初回約定確認なら確認をし、初回でなければ何もしない
@@ -177,7 +180,7 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 		}
 
 		if price.kind == PriceKindClosing {
-			return o.confirmContractAuctionMO(price, now)
+			return o.confirmContractItayoseMO(price, now)
 		}
 	case StockExecutionConditionIOCMO: // IOC成行
 		// 初回約定確認なら確認をし、初回でなければ何もしない
@@ -192,9 +195,9 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 		// 価格情報がザラバなら気配値がある場合に限り気配値で約定
 		switch price.kind {
 		case PriceKindOpening, PriceKindClosing:
-			return o.confirmContractAuctionMO(price, now)
+			return o.confirmContractItayoseMO(price, now)
 		case PriceKindRegular:
-			return o.confirmContractRegularMO(price, now)
+			return o.confirmContractAuctionMO(price, now)
 		}
 	case StockExecutionConditionLO: // 指値
 		// 価格情報が寄りで現在値があり現在値が約定条件を満たしていれば現在値で約定、現在値がなくても気配値があり気配値が約定条件を満たしていれば気配値で約定
@@ -203,9 +206,9 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 
 		switch price.kind {
 		case PriceKindOpening, PriceKindClosing:
-			return o.confirmContractAuctionLO(price, now)
+			return o.confirmContractItayoseLO(price, now)
 		case PriceKindRegular:
-			return o.confirmContractRegularLO(price, now)
+			return o.confirmContractAuctionLO(price, now)
 		}
 	case StockExecutionConditionLOMO, StockExecutionConditionLOAO: // 寄指(前場), 寄指(後場)
 		// 初回約定確認なら確認をし、初回でなければ何もしない
@@ -216,7 +219,7 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 		}
 
 		if price.kind == PriceKindOpening {
-			return o.confirmContractAuctionLO(price, now)
+			return o.confirmContractItayoseLO(price, now)
 		}
 	case StockExecutionConditionLOMC, StockExecutionConditionLOAC: // 引指(前場), 引指(後場)
 		// 初回約定確認なら確認をし、初回でなければ何もしない
@@ -227,7 +230,7 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 		}
 
 		if price.kind == PriceKindClosing {
-			return o.confirmContractAuctionLO(price, now)
+			return o.confirmContractItayoseLO(price, now)
 		}
 	case StockExecutionConditionIOCLO: // IOC指値
 		// 初回約定確認なら確認をし、初回でなければ何もしない
@@ -239,21 +242,21 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 
 		switch price.kind {
 		case PriceKindOpening, PriceKindClosing:
-			return o.confirmContractAuctionLO(price, now)
+			return o.confirmContractItayoseLO(price, now)
 		case PriceKindRegular:
-			return o.confirmContractRegularLO(price, now)
+			return o.confirmContractAuctionLO(price, now)
 		}
 	case StockExecutionConditionFUNARIM: // 不成(前場)
 		// 前場の引けでは引成注文と同じ
 		// 前場の引け以外は通常の指値と同じ
 		if session == SessionMorning && price.kind == PriceKindClosing {
-			return o.confirmContractAuctionMO(price, now)
+			return o.confirmContractItayoseMO(price, now)
 		} else {
 			switch price.kind {
 			case PriceKindOpening, PriceKindClosing:
-				return o.confirmContractAuctionLO(price, now)
+				return o.confirmContractItayoseLO(price, now)
 			case PriceKindRegular:
-				return o.confirmContractRegularLO(price, now)
+				return o.confirmContractAuctionLO(price, now)
 			}
 		}
 	case StockExecutionConditionFUNARIA: // 不成(後場)
@@ -262,16 +265,16 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 		if session == SessionAfternoon && price.kind == PriceKindClosing {
 			switch price.kind {
 			case PriceKindOpening, PriceKindClosing:
-				return o.confirmContractAuctionMO(price, now)
+				return o.confirmContractItayoseMO(price, now)
 			case PriceKindRegular:
-				return o.confirmContractRegularMO(price, now)
+				return o.confirmContractAuctionMO(price, now)
 			}
 		} else {
 			switch price.kind {
 			case PriceKindOpening, PriceKindClosing:
-				return o.confirmContractAuctionLO(price, now)
+				return o.confirmContractItayoseLO(price, now)
 			case PriceKindRegular:
-				return o.confirmContractRegularLO(price, now)
+				return o.confirmContractAuctionLO(price, now)
 			}
 		}
 	}
