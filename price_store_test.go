@@ -7,11 +7,11 @@ import (
 	"time"
 )
 
-func Test_NewPriceStore(t *testing.T) {
+func Test_GetPriceStore(t *testing.T) {
 	t.Parallel()
 
 	clock := &testClock{now: time.Date(2021, 5, 22, 7, 11, 0, 0, time.Local)}
-	got := NewPriceStore(clock)
+	got := GetPriceStore(clock)
 	want := &priceStore{
 		store:      map[string]SymbolPrice{},
 		clock:      clock,

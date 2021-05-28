@@ -5,15 +5,25 @@ import (
 	"time"
 )
 
-// NewPriceStore - 価格ストアの取得
-func NewPriceStore(clock Clock) PriceStore {
-	store := &priceStore{
-		store: map[string]SymbolPrice{},
-		clock: clock,
-	}
+var (
+	priceStoreSingleton      PriceStore
+	priceStoreSingletonMutex sync.Mutex
+)
 
-	store.setCalculatedExpireTime(clock.Now())
-	return store
+// GetPriceStore - 価格ストアの取得
+func GetPriceStore(clock Clock) PriceStore {
+	priceStoreSingletonMutex.Lock()
+	defer priceStoreSingletonMutex.Unlock()
+
+	if priceStoreSingleton == nil {
+		store := &priceStore{
+			store: map[string]SymbolPrice{},
+			clock: clock,
+		}
+		store.setCalculatedExpireTime(clock.Now())
+		priceStoreSingleton = store
+	}
+	return priceStoreSingleton
 }
 
 // PriceStore - 価格ストアのインターフェース
