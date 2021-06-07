@@ -22,7 +22,8 @@ type StockOrder struct {
 	OrderedAt          time.Time               // 注文日時
 	CanceledAt         time.Time               // 取消日時
 	Contracts          []*Contract             // 約定一覧
-	ConfirmingCount    int
+	ConfirmingCount    int                     // 約定確認回数
+	Message            string                  // メッセージ
 	mtx                sync.Mutex
 }
 
@@ -146,8 +147,6 @@ func (o *StockOrder) limitPrice() float64 {
 func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session Session) *confirmContractResult {
 	o.mtx.Lock()
 	defer o.mtx.Unlock()
-
-	// TODO 有効期限切れの注文なら状態を更新してfalse
 
 	// 銘柄・市場が同一でなければfalse
 	if o.SymbolCode != price.SymbolCode || o.Exchange != price.Exchange {
@@ -337,6 +336,23 @@ func (o *StockOrder) activate(price SymbolPrice, now time.Time) {
 		o.OrderStatus = OrderStatusInOrder
 		o.StopCondition.IsActivate = true
 		o.StopCondition.ActivatedAt = now
+	}
+}
+
+func (o *StockOrder) expired(now time.Time) {
+	o.mtx.Lock()
+	defer o.mtx.Unlock()
+
+	// 有効期限がゼロ値なら有効期限なしで何もしない
+	if o.ExpiredAt.IsZero() {
+		return
+	}
+
+	// 期限切れの注文なら状態を更新してfalse
+	if now.After(o.ExpiredAt) {
+		o.CanceledAt = now
+		o.OrderStatus = OrderStatusCanceled
+		o.Message = "expired"
 	}
 }
 

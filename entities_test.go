@@ -1089,3 +1089,41 @@ func Test_StockOrder_limitPrice(t *testing.T) {
 		})
 	}
 }
+
+func Test_StockOrder_expired(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name            string
+		stockOrder      *StockOrder
+		arg             time.Time
+		wantOrderStatus OrderStatus
+	}{
+		{name: "有効期限がゼロ値なら何もしない",
+			stockOrder:      &StockOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Time{}},
+			arg:             time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
+			wantOrderStatus: OrderStatusInOrder},
+		{name: "有効期限が現在時刻よりも過去なら取消済みにする",
+			stockOrder:      &StockOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 13, 0, 0, 0, time.Local)},
+			arg:             time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
+			wantOrderStatus: OrderStatusCanceled},
+		{name: "有効期限が現在時刻と一致しているなら状態を変えない",
+			stockOrder:      &StockOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local)},
+			arg:             time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
+			wantOrderStatus: OrderStatusInOrder},
+		{name: "有効期限が現在時刻よりも未来なら状態を変えない",
+			stockOrder:      &StockOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 15, 0, 0, 0, time.Local)},
+			arg:             time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
+			wantOrderStatus: OrderStatusInOrder},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			test.stockOrder.expired(test.arg)
+			if !reflect.DeepEqual(test.wantOrderStatus, test.stockOrder.OrderStatus) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.wantOrderStatus, test.stockOrder.OrderStatus)
+			}
+		})
+	}
+}
