@@ -30,6 +30,7 @@ type OrderStatus string
 const (
 	OrderStatusUnspecified OrderStatus = ""          // 未指定
 	OrderStatusNew         OrderStatus = "new"       // 新規
+	OrderStatusWait        OrderStatus = "wait"      // 待機
 	OrderStatusInOrder     OrderStatus = "in_order"  // 注文中
 	OrderStatusPart        OrderStatus = "part"      // 部分約定
 	OrderStatusDone        OrderStatus = "done"      // 全約定
@@ -55,7 +56,7 @@ func (e OrderStatus) IsFixed() bool {
 
 func (e OrderStatus) IsCancelable() bool {
 	switch e {
-	case OrderStatusNew, OrderStatusInOrder, OrderStatusPart:
+	case OrderStatusNew, OrderStatusWait, OrderStatusInOrder, OrderStatusPart:
 		return true
 	}
 	return false
@@ -78,8 +79,9 @@ const (
 	StockExecutionConditionLOMC        StockExecutionCondition = "limit_order_on_morning_closing"    // 引指(前場)
 	StockExecutionConditionLOAC        StockExecutionCondition = "limit_order_on_afternoon_closing"  // 引指(後場)
 	StockExecutionConditionIOCLO       StockExecutionCondition = "ioc_limit_order"                   // IOC指値
-	StockExecutionConditionFUNARIM     StockExecutionCondition = "funari_on_morning"                 // 不成(前場)
-	StockExecutionConditionFUNARIA     StockExecutionCondition = "funari_on_afternoon"               // 不成(後場)
+	StockExecutionConditionFunariM     StockExecutionCondition = "funari_on_morning"                 // 不成(前場)
+	StockExecutionConditionFunariA     StockExecutionCondition = "funari_on_afternoon"               // 不成(後場)
+	StockExecutionConditionStop        StockExecutionCondition = "stop"                              // 逆指値
 )
 
 func (e StockExecutionCondition) IsMarketOrder() bool {
@@ -110,8 +112,16 @@ func (e StockExecutionCondition) IsLimitOrder() bool {
 
 func (e StockExecutionCondition) IsFunari() bool {
 	switch e {
-	case StockExecutionConditionFUNARIM, // 不成(前場)
-		StockExecutionConditionFUNARIA: // 不成(後場)
+	case StockExecutionConditionFunariM, // 不成(前場)
+		StockExecutionConditionFunariA: // 不成(後場)
+		return true
+	}
+	return false
+}
+
+func (e StockExecutionCondition) IsStop() bool {
+	switch e {
+	case StockExecutionConditionStop: // 逆指値
 		return true
 	}
 	return false
@@ -125,8 +135,9 @@ func (e StockExecutionCondition) IsContractableMorningSession() bool {
 		StockExecutionConditionLO,
 		StockExecutionConditionLOMO,
 		StockExecutionConditionIOCLO,
-		StockExecutionConditionFUNARIM,
-		StockExecutionConditionFUNARIA:
+		StockExecutionConditionFunariM,
+		StockExecutionConditionFunariA,
+		StockExecutionConditionStop:
 		return true
 	}
 	return false
@@ -142,8 +153,9 @@ func (e StockExecutionCondition) IsContractableMorningSessionClosing() bool {
 		StockExecutionConditionLOMO,
 		StockExecutionConditionLOMC,
 		StockExecutionConditionIOCLO,
-		StockExecutionConditionFUNARIM,
-		StockExecutionConditionFUNARIA:
+		StockExecutionConditionFunariM,
+		StockExecutionConditionFunariA,
+		StockExecutionConditionStop:
 		return true
 	}
 	return false
@@ -157,8 +169,9 @@ func (e StockExecutionCondition) IsContractableAfternoonSession() bool {
 		StockExecutionConditionLO,
 		StockExecutionConditionLOAO,
 		StockExecutionConditionIOCLO,
-		StockExecutionConditionFUNARIM,
-		StockExecutionConditionFUNARIA:
+		StockExecutionConditionFunariM,
+		StockExecutionConditionFunariA,
+		StockExecutionConditionStop:
 		return true
 	}
 	return false
@@ -174,8 +187,9 @@ func (e StockExecutionCondition) IsContractableAfternoonSessionClosing() bool {
 		StockExecutionConditionLOAO,
 		StockExecutionConditionLOAC,
 		StockExecutionConditionIOCLO,
-		StockExecutionConditionFUNARIM,
-		StockExecutionConditionFUNARIA:
+		StockExecutionConditionFunariM,
+		StockExecutionConditionFunariA,
+		StockExecutionConditionStop:
 		return true
 	}
 	return false
@@ -219,3 +233,34 @@ const (
 	PriceKindRegular     PriceKind = "regular" // ザラバ
 	PriceKindClosing     PriceKind = "closing" // 引け
 )
+
+// ComparisonOperator - 比較演算子
+type ComparisonOperator string
+
+const (
+	ComparisonOperatorUnspecified                    = ""   // 未指定
+	ComparisonOperatorGT          ComparisonOperator = "gt" // より大きい
+	ComparisonOperatorGE          ComparisonOperator = "ge" // 以上
+	ComparisonOperatorEQ          ComparisonOperator = "eq" // 等しい
+	ComparisonOperatorLE          ComparisonOperator = "le" // 以下
+	ComparisonOperatorLT          ComparisonOperator = "lt" // 未満
+	ComparisonOperatorNE          ComparisonOperator = "ne" // 等しくない
+)
+
+func (e ComparisonOperator) CompareFloat64(a, b float64) bool {
+	switch e {
+	case ComparisonOperatorGT:
+		return a > b
+	case ComparisonOperatorGE:
+		return a >= b
+	case ComparisonOperatorEQ:
+		return a == b
+	case ComparisonOperatorLE:
+		return a <= b
+	case ComparisonOperatorLT:
+		return a < b
+	case ComparisonOperatorNE:
+		return a != b
+	}
+	return false
+}

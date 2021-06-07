@@ -92,3 +92,13 @@ type confirmContractResult struct {
 	price        float64
 	contractedAt time.Time
 }
+
+// StockStopCondition - 逆指値条件
+type StockStopCondition struct {
+	StopPrice                  float64                 // 逆指値発動価格
+	ComparisonOperator         ComparisonOperator      // 比較方法
+	ExecutionConditionAfterHit StockExecutionCondition // 逆指値発動後注文条件
+	LimitPriceAfterHit         float64                 // 逆指値発動後指値価格
+	ActivatedAt                time.Time               // 逆指値条件が満たされた日時
+	IsActivate                 bool
+}

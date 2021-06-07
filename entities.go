@@ -18,6 +18,7 @@ type StockOrder struct {
 	CanceledQuantity   float64                 // 取消数量
 	LimitPrice         float64                 // 指値価格
 	ExpiredAt          time.Time               // 有効期限
+	StopCondition      *StockStopCondition     // 現物逆指値条件
 	OrderedAt          time.Time               // 注文日時
 	CanceledAt         time.Time               // 取消日時
 	Contracts          []*Contract             // 約定一覧
@@ -26,10 +27,10 @@ type StockOrder struct {
 }
 
 func (o *StockOrder) isContractableTime(session Session) bool {
-	return (o.ExecutionCondition.IsContractableMorningSession() && session == SessionMorning) ||
-		(o.ExecutionCondition.IsContractableMorningSessionClosing() && session == SessionMorning) ||
-		(o.ExecutionCondition.IsContractableAfternoonSession() && session == SessionAfternoon) ||
-		(o.ExecutionCondition.IsContractableAfternoonSessionClosing() && session == SessionAfternoon)
+	return (o.executionCondition().IsContractableMorningSession() && session == SessionMorning) ||
+		(o.executionCondition().IsContractableMorningSessionClosing() && session == SessionMorning) ||
+		(o.executionCondition().IsContractableAfternoonSession() && session == SessionAfternoon) ||
+		(o.executionCondition().IsContractableAfternoonSessionClosing() && session == SessionAfternoon)
 }
 
 // confirmContractItayoseMO - 板寄せ方式での成行注文の約定確認と約定した場合の結果
@@ -80,21 +81,21 @@ func (o *StockOrder) confirmContractAuctionMO(price SymbolPrice, now time.Time) 
 func (o *StockOrder) confirmContractItayoseLO(price SymbolPrice, now time.Time) *confirmContractResult {
 	result := &confirmContractResult{isContracted: false}
 	if price.Price > 0 && now.Add(-5*time.Second).Before(price.PriceTime) {
-		if o.Side == SideBuy && o.LimitPrice >= price.Price {
+		if o.Side == SideBuy && o.limitPrice() >= price.Price {
 			result.isContracted = true
 			result.price = price.Price
 			result.contractedAt = now
-		} else if o.Side == SideSell && o.LimitPrice <= price.Price {
+		} else if o.Side == SideSell && o.limitPrice() <= price.Price {
 			result.isContracted = true
 			result.price = price.Price
 			result.contractedAt = now
 		}
 	} else {
-		if o.Side == SideBuy && price.Bid > 0 && o.LimitPrice >= price.Bid {
+		if o.Side == SideBuy && price.Bid > 0 && o.limitPrice() >= price.Bid {
 			result.isContracted = true
 			result.price = price.Bid
 			result.contractedAt = now
-		} else if o.Side == SideSell && price.Ask > 0 && o.LimitPrice <= price.Ask {
+		} else if o.Side == SideSell && price.Ask > 0 && o.limitPrice() <= price.Ask {
 			result.isContracted = true
 			result.price = price.Ask
 			result.contractedAt = now
@@ -108,17 +109,17 @@ func (o *StockOrder) confirmContractItayoseLO(price SymbolPrice, now time.Time) 
 //   売り注文で買い気配値があり、指値価格より買い気配値が高ければ約定する
 func (o *StockOrder) confirmContractAuctionLO(price SymbolPrice, now time.Time) *confirmContractResult {
 	result := &confirmContractResult{isContracted: false}
-	if o.Side == SideBuy && price.Bid > 0 && o.LimitPrice > price.Bid {
+	if o.Side == SideBuy && price.Bid > 0 && o.limitPrice() > price.Bid {
 		result.isContracted = true
-		result.price = o.LimitPrice
+		result.price = o.limitPrice()
 		result.contractedAt = now
 
 		if o.ConfirmingCount == 0 {
 			result.price = price.Bid
 		}
-	} else if o.Side == SideSell && price.Ask > 0 && o.LimitPrice < price.Ask {
+	} else if o.Side == SideSell && price.Ask > 0 && o.limitPrice() < price.Ask {
 		result.isContracted = true
-		result.price = o.LimitPrice
+		result.price = o.limitPrice()
 		result.contractedAt = now
 
 		if o.ConfirmingCount == 0 {
@@ -128,9 +129,25 @@ func (o *StockOrder) confirmContractAuctionLO(price SymbolPrice, now time.Time) 
 	return result
 }
 
+func (o *StockOrder) executionCondition() StockExecutionCondition {
+	if o.ExecutionCondition.IsStop() && o.OrderStatus != OrderStatusWait && o.StopCondition != nil {
+		return o.StopCondition.ExecutionConditionAfterHit
+	}
+	return o.ExecutionCondition
+}
+
+func (o *StockOrder) limitPrice() float64 {
+	if o.ExecutionCondition.IsStop() && o.OrderStatus != OrderStatusWait && o.StopCondition != nil {
+		return o.StopCondition.LimitPriceAfterHit
+	}
+	return o.LimitPrice
+}
+
 func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session Session) *confirmContractResult {
 	o.mtx.Lock()
 	defer o.mtx.Unlock()
+
+	// TODO 有効期限切れの注文なら状態を更新してfalse
 
 	// 銘柄・市場が同一でなければfalse
 	if o.SymbolCode != price.SymbolCode || o.Exchange != price.Exchange {
@@ -149,7 +166,7 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 
 	// 執行条件ごとの約定チェック
 	//   ここまできたということは、時間条件などはパスしているということ
-	switch o.ExecutionCondition {
+	switch o.executionCondition() {
 	case StockExecutionConditionMO: // 成行
 		// 価格情報が寄りで現在値があれば現在値で約定、現在値がなくても気配値があれば気配値で約定
 		// 価格情報が引けで現在値があれば現在値で約定、現在値がなくても気配値があれば気配値で約定
@@ -246,7 +263,7 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 		case PriceKindRegular:
 			return o.confirmContractAuctionLO(price, now)
 		}
-	case StockExecutionConditionFUNARIM: // 不成(前場)
+	case StockExecutionConditionFunariM: // 不成(前場)
 		// 前場の引けでは引成注文と同じ
 		// 前場の引け以外は通常の指値と同じ
 		if session == SessionMorning && price.kind == PriceKindClosing {
@@ -259,7 +276,7 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 				return o.confirmContractAuctionLO(price, now)
 			}
 		}
-	case StockExecutionConditionFUNARIA: // 不成(後場)
+	case StockExecutionConditionFunariA: // 不成(後場)
 		// 後場の引けでは引成注文と同じ
 		// 後場の引け以外は通常の指値と同じ
 		if session == SessionAfternoon && price.kind == PriceKindClosing {
@@ -277,10 +294,50 @@ func (o *StockOrder) confirmContract(price SymbolPrice, now time.Time, session S
 				return o.confirmContractAuctionLO(price, now)
 			}
 		}
+
+		// 逆指値での約定確認はない
+		//   逆指値発動後は他の執行条件に則った方法で約定する
 	}
 
 	o.ConfirmingCount++
 	return &confirmContractResult{isContracted: false}
+}
+
+func (o *StockOrder) activate(price SymbolPrice, now time.Time) {
+	o.mtx.Lock()
+	defer o.mtx.Unlock()
+
+	// 銘柄・市場が同一でなければ何もしない
+	if o.SymbolCode != price.SymbolCode || o.Exchange != price.Exchange {
+		return
+	}
+
+	// 待機注文でなければ何もしない
+	if o.OrderStatus != OrderStatusWait {
+		return
+	}
+
+	// 逆指値注文でなければ何もしない
+	if !o.ExecutionCondition.IsStop() {
+		return
+	}
+
+	// 逆指値条件が設定されていなければ何もしない
+	if o.StopCondition == nil {
+		return
+	}
+
+	// 現在値なし、もしくは現在値が5s以上前なら利用しない
+	if price.Price < 1 || !now.Add(-5*time.Second).Before(price.PriceTime) {
+		return
+	}
+
+	// 逆指値価格と現在値を比較した結果が条件を満たしていれば、注文状態に遷移させる
+	if o.StopCondition.ComparisonOperator.CompareFloat64(o.StopCondition.StopPrice, price.Price) {
+		o.OrderStatus = OrderStatusInOrder
+		o.StopCondition.IsActivate = true
+		o.StopCondition.ActivatedAt = now
+	}
 }
 
 func (o *StockOrder) contract(contract *Contract) {
