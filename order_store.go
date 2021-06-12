@@ -36,8 +36,7 @@ type stockOrderStore struct {
 	mtx   sync.Mutex
 }
 
-// GetAll - 注文日時の降順で返す
-//   デフォルトで並び順はコード順にしておく
+// GetAll - ストアのすべての注文をコード順に並べて返す
 func (s *stockOrderStore) GetAll() []*StockOrder {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
