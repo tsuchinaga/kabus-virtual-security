@@ -1,6 +1,7 @@
 package virtual_security
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -1123,6 +1124,105 @@ func Test_stockOrder_expired(t *testing.T) {
 			test.stockOrder.expired(test.arg)
 			if !reflect.DeepEqual(test.wantOrderStatus, test.stockOrder.OrderStatus) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.wantOrderStatus, test.stockOrder.OrderStatus)
+			}
+		})
+	}
+}
+
+func Test_stockPosition_Exit(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name              string
+		position          *stockPosition
+		arg               float64
+		wantOwnedQuantity float64
+		want              error
+	}{
+		{name: "エグジットできるなら保有数を減らす",
+			position:          &stockPosition{OwnedQuantity: 300},
+			arg:               100,
+			wantOwnedQuantity: 200,
+			want:              nil},
+		{name: "エグジットできないなら保有数を減らさず、エラーを返す",
+			position:          &stockPosition{OwnedQuantity: 300},
+			arg:               500,
+			wantOwnedQuantity: 300,
+			want:              NotEnoughOwnedQuantity},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got := test.position.Exit(test.arg)
+			if !reflect.DeepEqual(test.wantOwnedQuantity, test.position.OwnedQuantity) || !errors.Is(got, test.want) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.wantOwnedQuantity, test.want, test.position.OwnedQuantity, got)
+			}
+		})
+	}
+}
+
+func Test_stockPosition_Hold(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name             string
+		position         *stockPosition
+		arg              float64
+		wantHoldQuantity float64
+		want             error
+	}{
+		{name: "拘束できるなら拘束数を増やす",
+			position:         &stockPosition{OwnedQuantity: 300, HoldQuantity: 200},
+			arg:              100,
+			wantHoldQuantity: 300,
+			want:             nil},
+		{name: "拘束できないなら拘束数を増やさず、エラーを返す",
+			position:         &stockPosition{OwnedQuantity: 300, HoldQuantity: 100},
+			arg:              300,
+			wantHoldQuantity: 100,
+			want:             NotEnoughOwnedQuantity},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got := test.position.Hold(test.arg)
+			if !reflect.DeepEqual(test.wantHoldQuantity, test.position.HoldQuantity) || !errors.Is(got, test.want) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.wantHoldQuantity, test.want, test.position.HoldQuantity, got)
+			}
+		})
+	}
+}
+
+func Test_stockPosition_Release(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name             string
+		position         *stockPosition
+		arg              float64
+		wantHoldQuantity float64
+		want             error
+	}{
+		{name: "拘束を解放できるなら拘束数を減らす",
+			position:         &stockPosition{HoldQuantity: 300},
+			arg:              100,
+			wantHoldQuantity: 200,
+			want:             nil},
+		{name: "拘束を解放できないなら拘束数を減らさず、エラーを返す",
+			position:         &stockPosition{HoldQuantity: 100},
+			arg:              200,
+			wantHoldQuantity: 100,
+			want:             NotEnoughHoldQuantity},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got := test.position.Release(test.arg)
+			if !reflect.DeepEqual(test.wantHoldQuantity, test.position.HoldQuantity) || !errors.Is(got, test.want) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.wantHoldQuantity, test.want, test.position.HoldQuantity, got)
 			}
 		})
 	}

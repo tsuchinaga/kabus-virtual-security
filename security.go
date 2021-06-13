@@ -48,14 +48,15 @@ func (s *security) StockPositions() ([]*StockPosition, error) {
 	res := make([]*StockPosition, len(positions))
 	for i, p := range positions {
 		res[i] = &StockPosition{
-			Code:          p.Code,
-			OrderCode:     p.OrderCode,
-			SymbolCode:    p.SymbolCode,
-			Exchange:      p.Exchange,
-			Side:          p.Side,
-			OwnedQuantity: p.OwnedQuantity,
-			HoldQuantity:  p.HoldQuantity,
-			ContractedAt:  p.ContractedAt,
+			Code:               p.Code,
+			OrderCode:          p.OrderCode,
+			SymbolCode:         p.SymbolCode,
+			Exchange:           p.Exchange,
+			Side:               p.Side,
+			ContractedQuantity: p.ContractedQuantity,
+			OwnedQuantity:      p.OwnedQuantity,
+			HoldQuantity:       p.HoldQuantity,
+			ContractedAt:       p.ContractedAt,
 		}
 	}
 	return res, nil

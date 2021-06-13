@@ -95,14 +95,15 @@ type Contract struct {
 
 // StockPosition - ポジション
 type StockPosition struct {
-	Code          string    // ポジションコード
-	OrderCode     string    // 注文コード
-	SymbolCode    string    // 銘柄コード
-	Exchange      Exchange  // 市場
-	Side          Side      // 売買方向
-	OwnedQuantity float64   // 保有数量
-	HoldQuantity  float64   // 拘束数量
-	ContractedAt  time.Time // 約定日時
+	Code               string    // ポジションコード
+	OrderCode          string    // 注文コード
+	SymbolCode         string    // 銘柄コード
+	Exchange           Exchange  // 市場
+	Side               Side      // 売買方向
+	ContractedQuantity float64   // 約定数量
+	OwnedQuantity      float64   // 保有数量
+	HoldQuantity       float64   // 拘束数量
+	ContractedAt       time.Time // 約定日時
 }
 
 // confirmContractResult - 約定可能かの結果

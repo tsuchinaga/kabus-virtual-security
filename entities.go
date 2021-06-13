@@ -388,23 +388,49 @@ func (o *stockOrder) cancel(canceledAt time.Time) {
 
 // stockPosition - 現物ポジション
 type stockPosition struct {
-	Code          string    // ポジションコード
-	OrderCode     string    // 注文コード
-	SymbolCode    string    // 銘柄コード
-	Exchange      Exchange  // 市場
-	Side          Side      // 売買方向
-	OwnedQuantity float64   // 保有数量
-	HoldQuantity  float64   // 拘束数量
-	ContractedAt  time.Time // 約定日時
-	mtx           sync.Mutex
+	Code               string    // ポジションコード
+	OrderCode          string    // 注文コード
+	SymbolCode         string    // 銘柄コード
+	Exchange           Exchange  // 市場
+	Side               Side      // 売買方向
+	ContractedQuantity float64   // 約定数量
+	OwnedQuantity      float64   // 保有数量
+	HoldQuantity       float64   // 拘束数量
+	ContractedAt       time.Time // 約定日時
+	mtx                sync.Mutex
+}
+
+// Exit - ポジションをエグジットする
+func (p *stockPosition) Exit(quantity float64) error {
+	p.mtx.Lock()
+	defer p.mtx.Unlock()
+
+	if p.OwnedQuantity < quantity {
+		return NotEnoughOwnedQuantity
+	}
+	p.OwnedQuantity -= quantity
+	return nil
 }
 
 // Hold - ポジションの保有数を拘束する
-func (o *stockPosition) Hold(quantity float64) {
-	panic("no implemented yet")
+func (p *stockPosition) Hold(quantity float64) error {
+	p.mtx.Lock()
+	defer p.mtx.Unlock()
+
+	if p.OwnedQuantity < p.HoldQuantity+quantity {
+		return NotEnoughOwnedQuantity
+	}
+	p.HoldQuantity += quantity
+	return nil
 }
 
 // Release - ポジションの拘束数を開放する
-func (o *stockPosition) Release(quantity float64) {
-	panic("no implemented yet")
+func (p *stockPosition) Release(quantity float64) error {
+	p.mtx.Lock()
+	defer p.mtx.Unlock()
+	if p.HoldQuantity-quantity < 0 {
+		return NotEnoughHoldQuantity
+	}
+	p.HoldQuantity -= quantity
+	return nil
 }
