@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func Test_SymbolPrice_MaxTime(t *testing.T) {
+func Test_SymbolPrice_maxTime(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name        string
@@ -59,7 +59,7 @@ func Test_SymbolPrice_MaxTime(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got := test.symbolPrice.MaxTime()
+			got := test.symbolPrice.maxTime()
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}

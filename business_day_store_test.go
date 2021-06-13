@@ -25,11 +25,11 @@ func (t *testJPXBusinessDay) Refresh(context.Context) error {
 }
 func (t *testJPXBusinessDay) LastUpdateDate() time.Time { return t.lastUpdateDate }
 
-func Test_GetBusinessDayStore(t *testing.T) {
+func Test_getBusinessDayStore(t *testing.T) {
 	t.Parallel()
 
 	clock := &testClock{}
-	got := GetBusinessDayStore(clock)
+	got := getBusinessDayStore(clock)
 	want := &businessDayStore{
 		clock:       clock,
 		businessDay: jbd.NewBusinessDay(),

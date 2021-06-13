@@ -6,52 +6,52 @@ import (
 	"time"
 )
 
-func Test_StockOrder_isContractableTime(t *testing.T) {
+func Test_stockOrder_isContractableTime(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
-		stockOrder *StockOrder
+		stockOrder *stockOrder
 		arg        Session
 		want       bool
 	}{
 		{name: "場が前場でザラバで約定する注文であればtrue",
-			stockOrder: &StockOrder{ExecutionCondition: StockExecutionConditionMO},
+			stockOrder: &stockOrder{ExecutionCondition: StockExecutionConditionMO},
 			arg:        SessionMorning,
 			want:       true},
 		{name: "場が前場で前場の寄りで約定する注文であればtrue",
-			stockOrder: &StockOrder{ExecutionCondition: StockExecutionConditionMOMO},
+			stockOrder: &stockOrder{ExecutionCondition: StockExecutionConditionMOMO},
 			arg:        SessionMorning,
 			want:       true},
 		{name: "場が前場で前場の引けで約定する注文であればtrue",
-			stockOrder: &StockOrder{ExecutionCondition: StockExecutionConditionMOMC},
+			stockOrder: &stockOrder{ExecutionCondition: StockExecutionConditionMOMC},
 			arg:        SessionMorning,
 			want:       true},
 		{name: "場が前場で後場の寄りで約定する注文であればfalse",
-			stockOrder: &StockOrder{ExecutionCondition: StockExecutionConditionMOAO},
+			stockOrder: &stockOrder{ExecutionCondition: StockExecutionConditionMOAO},
 			arg:        SessionMorning,
 			want:       false},
 		{name: "場が前場で前場の引けで約定する注文であればfalse",
-			stockOrder: &StockOrder{ExecutionCondition: StockExecutionConditionMOAC},
+			stockOrder: &stockOrder{ExecutionCondition: StockExecutionConditionMOAC},
 			arg:        SessionMorning,
 			want:       false},
 		{name: "場が後場でザラバで約定する注文であればtrue",
-			stockOrder: &StockOrder{ExecutionCondition: StockExecutionConditionMO},
+			stockOrder: &stockOrder{ExecutionCondition: StockExecutionConditionMO},
 			arg:        SessionAfternoon,
 			want:       true},
 		{name: "場が後場で前場の寄りで約定する注文であればfalse",
-			stockOrder: &StockOrder{ExecutionCondition: StockExecutionConditionMOMO},
+			stockOrder: &stockOrder{ExecutionCondition: StockExecutionConditionMOMO},
 			arg:        SessionAfternoon,
 			want:       false},
 		{name: "場が後場で前場の引けで約定する注文であればtrue",
-			stockOrder: &StockOrder{ExecutionCondition: StockExecutionConditionMOMC},
+			stockOrder: &stockOrder{ExecutionCondition: StockExecutionConditionMOMC},
 			arg:        SessionAfternoon,
 			want:       false},
 		{name: "場が後場で後場の寄りで約定する注文であればfalse",
-			stockOrder: &StockOrder{ExecutionCondition: StockExecutionConditionMOAO},
+			stockOrder: &stockOrder{ExecutionCondition: StockExecutionConditionMOAO},
 			arg:        SessionAfternoon,
 			want:       true},
 		{name: "場が後場で前場の引けで約定する注文であればfalse",
-			stockOrder: &StockOrder{ExecutionCondition: StockExecutionConditionMOAC},
+			stockOrder: &stockOrder{ExecutionCondition: StockExecutionConditionMOAC},
 			arg:        SessionAfternoon,
 			want:       true},
 	}
@@ -68,17 +68,17 @@ func Test_StockOrder_isContractableTime(t *testing.T) {
 	}
 }
 
-func Test_StockOrder_confirmContractItayoseMO(t *testing.T) {
+func Test_stockOrder_confirmContractItayoseMO(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
-		stockOrder *StockOrder
+		stockOrder *stockOrder
 		arg1       SymbolPrice
 		arg2       time.Time
 		want       *confirmContractResult
 	}{
 		{name: "現値がなく、買い注文なら、売り気配値で約定する",
-			stockOrder: &StockOrder{Side: SideBuy},
+			stockOrder: &stockOrder{Side: SideBuy},
 			arg1:       SymbolPrice{Bid: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -87,12 +87,12 @@ func Test_StockOrder_confirmContractItayoseMO(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			}},
 		{name: "現値がなく、買い注文でも、売り気配値がなければ約定しない",
-			stockOrder: &StockOrder{Side: SideBuy},
+			stockOrder: &stockOrder{Side: SideBuy},
 			arg1:       SymbolPrice{},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "現値がなく、売り注文なら、買い気配値で約定する",
-			stockOrder: &StockOrder{Side: SideSell},
+			stockOrder: &stockOrder{Side: SideSell},
 			arg1:       SymbolPrice{Ask: 900},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -101,17 +101,17 @@ func Test_StockOrder_confirmContractItayoseMO(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			}},
 		{name: "現値がなく、売り注文でも、買い気配値がなければ約定しない",
-			stockOrder: &StockOrder{Side: SideSell},
+			stockOrder: &stockOrder{Side: SideSell},
 			arg1:       SymbolPrice{},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "現値があっても、現値時刻が5s以内でなければ約定しない",
-			stockOrder: &StockOrder{Side: SideSell},
+			stockOrder: &stockOrder{Side: SideSell},
 			arg1:       SymbolPrice{Price: 1100, PriceTime: time.Date(2021, 5, 12, 10, 59, 55, 0, time.Local)},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "現値があって、現値時刻が5s以内なら、現値で約定する",
-			stockOrder: &StockOrder{Side: SideSell},
+			stockOrder: &stockOrder{Side: SideSell},
 			arg1:       SymbolPrice{Price: 1100, PriceTime: time.Date(2021, 5, 12, 10, 59, 56, 0, time.Local)},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -133,17 +133,17 @@ func Test_StockOrder_confirmContractItayoseMO(t *testing.T) {
 	}
 }
 
-func Test_StockOrder_confirmContractRegularMO(t *testing.T) {
+func Test_stockOrder_confirmContractRegularMO(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
-		stockOrder *StockOrder
+		stockOrder *stockOrder
 		arg1       SymbolPrice
 		arg2       time.Time
 		want       *confirmContractResult
 	}{
 		{name: "買い注文なら、売り気配値で約定する",
-			stockOrder: &StockOrder{Side: SideBuy},
+			stockOrder: &stockOrder{Side: SideBuy},
 			arg1:       SymbolPrice{Bid: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -152,12 +152,12 @@ func Test_StockOrder_confirmContractRegularMO(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			}},
 		{name: "買い注文でも、売り気配値がなければ約定しない",
-			stockOrder: &StockOrder{Side: SideBuy},
+			stockOrder: &stockOrder{Side: SideBuy},
 			arg1:       SymbolPrice{},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "売り注文なら、買い気配値で約定する",
-			stockOrder: &StockOrder{Side: SideSell},
+			stockOrder: &stockOrder{Side: SideSell},
 			arg1:       SymbolPrice{Ask: 900},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -166,7 +166,7 @@ func Test_StockOrder_confirmContractRegularMO(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			}},
 		{name: "売り注文でも、買い気配値がなければ約定しない",
-			stockOrder: &StockOrder{Side: SideSell},
+			stockOrder: &stockOrder{Side: SideSell},
 			arg1:       SymbolPrice{},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
@@ -184,17 +184,17 @@ func Test_StockOrder_confirmContractRegularMO(t *testing.T) {
 	}
 }
 
-func Test_StockOrder_confirmContractItayoseLO(t *testing.T) {
+func Test_stockOrder_confirmContractItayoseLO(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
-		stockOrder *StockOrder
+		stockOrder *stockOrder
 		arg1       SymbolPrice
 		arg2       time.Time
 		want       *confirmContractResult
 	}{
 		{name: "現値がなく、買い注文で、売り気配値があり、指値が売り気配値より高いなら、売り気配値で約定する",
-			stockOrder: &StockOrder{Side: SideBuy, LimitPrice: 1001},
+			stockOrder: &stockOrder{Side: SideBuy, LimitPrice: 1001},
 			arg1:       SymbolPrice{Bid: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -203,7 +203,7 @@ func Test_StockOrder_confirmContractItayoseLO(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			}},
 		{name: "現値がなく、買い注文で、売り気配値があり、指値が売り気配値と同じなら、売り気配値で約定する",
-			stockOrder: &StockOrder{Side: SideBuy, LimitPrice: 1000},
+			stockOrder: &stockOrder{Side: SideBuy, LimitPrice: 1000},
 			arg1:       SymbolPrice{Bid: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -212,22 +212,22 @@ func Test_StockOrder_confirmContractItayoseLO(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			}},
 		{name: "現値がなく、買い注文で、売り気配値があり、指値が売り気配値より安いなら、約定しない",
-			stockOrder: &StockOrder{Side: SideBuy, LimitPrice: 999},
+			stockOrder: &stockOrder{Side: SideBuy, LimitPrice: 999},
 			arg1:       SymbolPrice{Bid: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "現値がなく、買い注文で、売り気配値がなければ、約定しない",
-			stockOrder: &StockOrder{Side: SideBuy, LimitPrice: 999},
+			stockOrder: &stockOrder{Side: SideBuy, LimitPrice: 999},
 			arg1:       SymbolPrice{},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "現値がなく、売り注文で、買い気配値があり、指値が買い気配値より高いなら、約定しない",
-			stockOrder: &StockOrder{Side: SideSell, LimitPrice: 1001},
+			stockOrder: &stockOrder{Side: SideSell, LimitPrice: 1001},
 			arg1:       SymbolPrice{Ask: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "現値がなく、売り注文で、買い気配値があり、指値が買い気配値と同じなら、買い気配値で約定する",
-			stockOrder: &StockOrder{Side: SideSell, LimitPrice: 1000},
+			stockOrder: &stockOrder{Side: SideSell, LimitPrice: 1000},
 			arg1:       SymbolPrice{Ask: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -236,7 +236,7 @@ func Test_StockOrder_confirmContractItayoseLO(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			}},
 		{name: "現値がなく、売り注文で、買い気配値があり、指値が買い気配値より安いなら、買い気配値で約定する",
-			stockOrder: &StockOrder{Side: SideSell, LimitPrice: 999},
+			stockOrder: &stockOrder{Side: SideSell, LimitPrice: 999},
 			arg1:       SymbolPrice{Ask: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -245,17 +245,17 @@ func Test_StockOrder_confirmContractItayoseLO(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			}},
 		{name: "現値がなく、売り注文で、買い気配値がなければ、約定しない",
-			stockOrder: &StockOrder{Side: SideSell, LimitPrice: 999},
+			stockOrder: &stockOrder{Side: SideSell, LimitPrice: 999},
 			arg1:       SymbolPrice{},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "現値があり、現値時刻が5s前なら、約定しない",
-			stockOrder: &StockOrder{Side: SideBuy, LimitPrice: 1000},
+			stockOrder: &stockOrder{Side: SideBuy, LimitPrice: 1000},
 			arg1:       SymbolPrice{Price: 1000, PriceTime: time.Date(2021, 5, 12, 10, 59, 55, 0, time.Local)},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "現値があり、現値時刻が5s以内で、買い注文で、指値が現値より高いなら、現値で約定する",
-			stockOrder: &StockOrder{Side: SideBuy, LimitPrice: 1001},
+			stockOrder: &stockOrder{Side: SideBuy, LimitPrice: 1001},
 			arg1:       SymbolPrice{Price: 1000, PriceTime: time.Date(2021, 5, 12, 10, 59, 56, 0, time.Local)},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -264,7 +264,7 @@ func Test_StockOrder_confirmContractItayoseLO(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			}},
 		{name: "現値があり、現値時刻が5s以内で、買い注文で、指値が現値と同じなら、現値で約定する",
-			stockOrder: &StockOrder{Side: SideBuy, LimitPrice: 1000},
+			stockOrder: &stockOrder{Side: SideBuy, LimitPrice: 1000},
 			arg1:       SymbolPrice{Price: 1000, PriceTime: time.Date(2021, 5, 12, 10, 59, 56, 0, time.Local)},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -273,17 +273,17 @@ func Test_StockOrder_confirmContractItayoseLO(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			}},
 		{name: "現値があり、現値時刻が5s以内で、買い注文で、指値が現値より安いなら、約定しない",
-			stockOrder: &StockOrder{Side: SideBuy, LimitPrice: 999},
+			stockOrder: &stockOrder{Side: SideBuy, LimitPrice: 999},
 			arg1:       SymbolPrice{Price: 1000, PriceTime: time.Date(2021, 5, 12, 10, 59, 56, 0, time.Local)},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "現値があり、現値時刻が5s以内で、売り注文で、指値が現値より高いなら、約定しない",
-			stockOrder: &StockOrder{Side: SideSell, LimitPrice: 1001},
+			stockOrder: &stockOrder{Side: SideSell, LimitPrice: 1001},
 			arg1:       SymbolPrice{Price: 1000, PriceTime: time.Date(2021, 5, 12, 10, 59, 56, 0, time.Local)},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "現値があり、現値時刻が5s以内で、売り注文で、指値が現値と同じなら、現値で約定する",
-			stockOrder: &StockOrder{Side: SideSell, LimitPrice: 1000},
+			stockOrder: &stockOrder{Side: SideSell, LimitPrice: 1000},
 			arg1:       SymbolPrice{Price: 1000, PriceTime: time.Date(2021, 5, 12, 10, 59, 56, 0, time.Local)},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -292,7 +292,7 @@ func Test_StockOrder_confirmContractItayoseLO(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			}},
 		{name: "現値があり、現値時刻が5s以内で、売り注文で、指値が現値より安いなら、現値で約定する",
-			stockOrder: &StockOrder{Side: SideSell, LimitPrice: 999},
+			stockOrder: &stockOrder{Side: SideSell, LimitPrice: 999},
 			arg1:       SymbolPrice{Price: 1000, PriceTime: time.Date(2021, 5, 12, 10, 59, 56, 0, time.Local)},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -314,17 +314,17 @@ func Test_StockOrder_confirmContractItayoseLO(t *testing.T) {
 	}
 }
 
-func Test_StockOrder_confirmContractRegularLO(t *testing.T) {
+func Test_stockOrder_confirmContractRegularLO(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
-		stockOrder *StockOrder
+		stockOrder *stockOrder
 		arg1       SymbolPrice
 		arg2       time.Time
 		want       *confirmContractResult
 	}{
 		{name: "買い注文で、売り気配値があり、指値が売り気配値より高いなら、指値で約定する",
-			stockOrder: &StockOrder{Side: SideBuy, LimitPrice: 1001},
+			stockOrder: &stockOrder{Side: SideBuy, LimitPrice: 1001},
 			arg1:       SymbolPrice{Bid: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -333,32 +333,32 @@ func Test_StockOrder_confirmContractRegularLO(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			}},
 		{name: "買い注文で、売り気配値があり、指値が売り気配値と同じなら、約定しない",
-			stockOrder: &StockOrder{Side: SideBuy, LimitPrice: 1000},
+			stockOrder: &stockOrder{Side: SideBuy, LimitPrice: 1000},
 			arg1:       SymbolPrice{Bid: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "買い注文で、売り気配値があり、指値が売り気配値より安いなら、約定しない",
-			stockOrder: &StockOrder{Side: SideBuy, LimitPrice: 999},
+			stockOrder: &stockOrder{Side: SideBuy, LimitPrice: 999},
 			arg1:       SymbolPrice{Bid: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "買い注文で、売り気配値がなければ、約定しない",
-			stockOrder: &StockOrder{Side: SideBuy, LimitPrice: 999},
+			stockOrder: &stockOrder{Side: SideBuy, LimitPrice: 999},
 			arg1:       SymbolPrice{},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "売り注文で、買い気配値があり、指値が買い気配値より高いなら、約定しない",
-			stockOrder: &StockOrder{Side: SideSell, LimitPrice: 1001},
+			stockOrder: &stockOrder{Side: SideSell, LimitPrice: 1001},
 			arg1:       SymbolPrice{Ask: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "売り注文で、買い気配値があり、指値が買い気配値と同じなら、約定しない",
-			stockOrder: &StockOrder{Side: SideSell, LimitPrice: 1000},
+			stockOrder: &stockOrder{Side: SideSell, LimitPrice: 1000},
 			arg1:       SymbolPrice{Ask: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "売り注文で、買い気配値があり、指値が買い気配値より安いなら、指値で約定する",
-			stockOrder: &StockOrder{Side: SideSell, LimitPrice: 999},
+			stockOrder: &stockOrder{Side: SideSell, LimitPrice: 999},
 			arg1:       SymbolPrice{Ask: 1000},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want: &confirmContractResult{
@@ -367,7 +367,7 @@ func Test_StockOrder_confirmContractRegularLO(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			}},
 		{name: "売り注文で、買い気配値がなければ、約定しない",
-			stockOrder: &StockOrder{Side: SideSell, LimitPrice: 999},
+			stockOrder: &stockOrder{Side: SideSell, LimitPrice: 999},
 			arg1:       SymbolPrice{},
 			arg2:       time.Date(2021, 5, 12, 11, 0, 0, 0, time.Local),
 			want:       &confirmContractResult{isContracted: false}},
@@ -385,265 +385,265 @@ func Test_StockOrder_confirmContractRegularLO(t *testing.T) {
 	}
 }
 
-func Test_StockOrder_confirmContract(t *testing.T) {
+func Test_stockOrder_confirmContract(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
-		stockOrder *StockOrder
+		stockOrder *stockOrder
 		arg1       SymbolPrice
 		arg2       time.Time
 		arg3       Session
 		want       *confirmContractResult
 	}{
 		{name: "銘柄が一致していなければfalse",
-			stockOrder: &StockOrder{SymbolCode: "1234"},
+			stockOrder: &stockOrder{SymbolCode: "1234"},
 			arg1:       SymbolPrice{SymbolCode: "0000"},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionUnspecified,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "銘柄が一致していても市場が一致していなければfalse",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeUnspecified},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionUnspecified,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "注文が約定できない状態ならfalse",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusDone},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusDone},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionUnspecified,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "約定できない時間ならfalse",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMO},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMO},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionUnspecified,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "成行が寄り価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMO},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMO},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local)}},
 		{name: "成行が引け価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMO},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMO},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 15, 0, 2, 0, time.Local), kind: PriceKindClosing},
 			arg2:       time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local)}},
 		{name: "成行がザラバで約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionMO},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionMO},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Bid: 1000, kind: PriceKindRegular},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local)}},
 		{name: "成行がタイミング不明なら約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionMO},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionMO},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Bid: 1000, kind: PriceKindUnspecified},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "寄成前場が寄り価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOMO},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOMO},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local)}},
 		{name: "寄成前場が2回目以降の確認では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOMO, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOMO, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "寄成前場が後場では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOMO, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOMO, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "寄成後場が寄り価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOAO},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOAO},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local)}},
 		{name: "寄成後場が2回目以降の確認では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOAO, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOAO, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "寄成後場が前場では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOAO, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOAO, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "引成前場が引け価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOMC},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOMC},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local), kind: PriceKindClosing},
 			arg2:       time.Date(2021, 5, 12, 12, 30, 3, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 12, 30, 3, 0, time.Local)}},
 		{name: "引成前場が2回目以降の確認では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOMC, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOMC, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 12, 30, 3, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "引成前場が後場では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOMC, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOMC, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 12, 30, 3, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "引成後場が引け価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOAC},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOAC},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local), kind: PriceKindClosing},
 			arg2:       time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local)}},
 		{name: "引成後場が2回目以降の確認では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOAC, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOAC, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "引成後場が前場では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOAC, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMOAC, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: false},
 		},
 		{name: "IOC成行が寄り価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionIOCMO},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionIOCMO},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local)}},
 		{name: "IOC成行が引け価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionIOCMO},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionIOCMO},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 15, 0, 2, 0, time.Local), kind: PriceKindClosing},
 			arg2:       time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local)}},
 		{name: "IOC成行がザラバで約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionIOCMO},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionIOCMO},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Bid: 1000, kind: PriceKindRegular},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local)}},
 		{name: "IOC成行がタイミング不明なら約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionIOCMO},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionIOCMO},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Bid: 1000, kind: PriceKindUnspecified},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "IOC成行が1度でも約定確認されていたら約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionIOCMO, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionIOCMO, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Bid: 1000, kind: PriceKindRegular},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "指値が寄り価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLO, LimitPrice: 1000},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLO, LimitPrice: 1000},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local)}},
 		{name: "指値が引け価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLO, LimitPrice: 1000},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLO, LimitPrice: 1000},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 15, 0, 2, 0, time.Local), kind: PriceKindClosing},
 			arg2:       time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local)}},
 		{name: "指値がザラバで約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLO, LimitPrice: 1000, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLO, LimitPrice: 1000, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Bid: 990, kind: PriceKindRegular},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local)}},
 		{name: "指値がタイミング不明なら約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLO},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLO},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Bid: 1000, kind: PriceKindUnspecified},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "寄指前場が寄り価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMO, LimitPrice: 1000},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMO, LimitPrice: 1000},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local)}},
 		{name: "寄指前場が2回目以降の確認では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMO, LimitPrice: 1000, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMO, LimitPrice: 1000, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "寄指前場が後場では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMO, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMO, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "寄指後場が寄り価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOAO, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOAO, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local)}},
 		{name: "寄指値後場が2回目以降の確認では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMO, LimitPrice: 1000, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMO, LimitPrice: 1000, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "寄指後場が前場では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOAO, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOAO, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "引指前場が引け価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMC, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMC, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local), kind: PriceKindClosing},
 			arg2:       time.Date(2021, 5, 12, 12, 30, 3, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 12, 30, 3, 0, time.Local)}},
 		{name: "引指前場が2回目以降の確認では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMC, LimitPrice: 1000, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMC, LimitPrice: 1000, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 12, 30, 3, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "引指前場が後場では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMC, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOMC, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 12, 30, 3, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "引指後場が引け価格で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOAC, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOAC, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local), kind: PriceKindClosing},
 			arg2:       time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local)}},
 		{name: "引指後場が2回目以降の確認では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOAC, LimitPrice: 1000, ConfirmingCount: 1},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOAC, LimitPrice: 1000, ConfirmingCount: 1},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "引指後場が前場では約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOAC, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionLOAC, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 15, 0, 3, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "不成前場は前場の寄りではオークションの指値で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariM, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariM, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
@@ -653,7 +653,7 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			}},
 		{name: "不成前場は前場のザラバでは指値で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariM, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariM, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Bid: 990, kind: PriceKindRegular},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
@@ -663,7 +663,7 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			}},
 		{name: "不成前場は前場の引けではオークションの成行で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariM, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariM, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1200, PriceTime: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local), kind: PriceKindClosing},
 			arg2:       time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local),
 			arg3:       SessionMorning,
@@ -673,7 +673,7 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local),
 			}},
 		{name: "不成前場は後場の寄りではオークションの指値で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariM, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariM, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local),
 			arg3:       SessionAfternoon,
@@ -683,7 +683,7 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local),
 			}},
 		{name: "不成前場は後場のザラバでは指値で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariM, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariM, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Bid: 990, kind: PriceKindRegular},
 			arg2:       time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local),
 			arg3:       SessionAfternoon,
@@ -693,7 +693,7 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local),
 			}},
 		{name: "不成前場は後場の引けではオークションの指値で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariM, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariM, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 990, PriceTime: time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local), kind: PriceKindClosing},
 			arg2:       time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local),
 			arg3:       SessionAfternoon,
@@ -703,7 +703,7 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local),
 			}},
 		{name: "不成後場は前場の寄りではオークションの指値で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariA, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariA, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
@@ -713,7 +713,7 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			}},
 		{name: "不成後場は前場のザラバでは指値で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariA, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariA, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Bid: 990, kind: PriceKindRegular},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
@@ -723,7 +723,7 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			}},
 		{name: "不成後場は前場の引けではオークションの指値で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariA, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariA, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 990, PriceTime: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local), kind: PriceKindClosing},
 			arg2:       time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local),
 			arg3:       SessionMorning,
@@ -733,7 +733,7 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local),
 			}},
 		{name: "不成後場は後場の寄りではオークションの指値で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariA, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariA, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1000, PriceTime: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local), kind: PriceKindOpening},
 			arg2:       time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local),
 			arg3:       SessionAfternoon,
@@ -743,7 +743,7 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local),
 			}},
 		{name: "不成後場は後場のザラバでは指値で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariA, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariA, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Bid: 990, kind: PriceKindRegular},
 			arg2:       time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local),
 			arg3:       SessionAfternoon,
@@ -753,7 +753,7 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 12, 30, 0, 0, time.Local),
 			}},
 		{name: "不成後場は後場の引けではオークションの成行で約定する",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariA, LimitPrice: 1000, ConfirmingCount: 0},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionFunariA, LimitPrice: 1000, ConfirmingCount: 0},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1200, PriceTime: time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local), kind: PriceKindClosing},
 			arg2:       time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local),
 			arg3:       SessionAfternoon,
@@ -763,19 +763,19 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 				contractedAt: time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local),
 			}},
 		{name: "逆指値注文が待機中なら約定しない",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusWait, Side: SideBuy, ExecutionCondition: StockExecutionConditionStop, LimitPrice: 1000, ConfirmingCount: 0, StopCondition: &StockStopCondition{ExecutionConditionAfterHit: StockExecutionConditionMO}},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusWait, Side: SideBuy, ExecutionCondition: StockExecutionConditionStop, LimitPrice: 1000, ConfirmingCount: 0, StopCondition: &StockStopCondition{ExecutionConditionAfterHit: StockExecutionConditionMO}},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Price: 1200, PriceTime: time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local), kind: PriceKindClosing},
 			arg2:       time.Date(2021, 5, 12, 15, 0, 0, 0, time.Local),
 			arg3:       SessionAfternoon,
 			want:       &confirmContractResult{isContracted: false}},
 		{name: "逆指値注文が注文中で、逆指値条件が成行なら成行と同じ処理が行なわれる",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionStop, StopCondition: &StockStopCondition{ExecutionConditionAfterHit: StockExecutionConditionMO}},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionStop, StopCondition: &StockStopCondition{ExecutionConditionAfterHit: StockExecutionConditionMO}},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Bid: 1000, kind: PriceKindRegular},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
 			want:       &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local)}},
 		{name: "逆指値注文が注文中で、逆指値条件が指値なら指値と同じ処理が行なわれる",
-			stockOrder: &StockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionStop, ConfirmingCount: 1, StopCondition: &StockStopCondition{ExecutionConditionAfterHit: StockExecutionConditionLO, LimitPriceAfterHit: 1000.0}},
+			stockOrder: &stockOrder{SymbolCode: "1234", Exchange: ExchangeToushou, OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionStop, ConfirmingCount: 1, StopCondition: &StockStopCondition{ExecutionConditionAfterHit: StockExecutionConditionLO, LimitPriceAfterHit: 1000.0}},
 			arg1:       SymbolPrice{SymbolCode: "1234", Exchange: ExchangeToushou, Bid: 990, kind: PriceKindRegular},
 			arg2:       time.Date(2021, 5, 12, 9, 0, 0, 0, time.Local),
 			arg3:       SessionMorning,
@@ -794,32 +794,32 @@ func Test_StockOrder_confirmContract(t *testing.T) {
 	}
 }
 
-func Test_StockOrder_contract(t *testing.T) {
+func Test_stockOrder_contract(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name                   string
-		stockOrder             *StockOrder
+		stockOrder             *stockOrder
 		arg                    *Contract
 		wantContractedQuantity float64
 		wantStatus             OrderStatus
 	}{
 		{name: "引数がnilなら何もしない",
-			stockOrder:             &StockOrder{OrderQuantity: 3, ContractedQuantity: 0, OrderStatus: OrderStatusUnspecified},
+			stockOrder:             &stockOrder{OrderQuantity: 3, ContractedQuantity: 0, OrderStatus: OrderStatusUnspecified},
 			arg:                    nil,
 			wantContractedQuantity: 0,
 			wantStatus:             OrderStatusUnspecified},
 		{name: "約定後、約定数量が0なら注文中",
-			stockOrder:             &StockOrder{OrderQuantity: 3, ContractedQuantity: 0, OrderStatus: OrderStatusUnspecified},
+			stockOrder:             &stockOrder{OrderQuantity: 3, ContractedQuantity: 0, OrderStatus: OrderStatusUnspecified},
 			arg:                    &Contract{Quantity: 0},
 			wantContractedQuantity: 0,
 			wantStatus:             OrderStatusInOrder},
 		{name: "約定後、約定数量が注文数量未満なら部分約定",
-			stockOrder:             &StockOrder{OrderQuantity: 3, ContractedQuantity: 0, OrderStatus: OrderStatusUnspecified},
+			stockOrder:             &stockOrder{OrderQuantity: 3, ContractedQuantity: 0, OrderStatus: OrderStatusUnspecified},
 			arg:                    &Contract{Quantity: 1},
 			wantContractedQuantity: 1,
 			wantStatus:             OrderStatusPart},
 		{name: "約定後、約定数量が注文数量以上なら全約定",
-			stockOrder:             &StockOrder{OrderQuantity: 3, ContractedQuantity: 1, OrderStatus: OrderStatusUnspecified},
+			stockOrder:             &stockOrder{OrderQuantity: 3, ContractedQuantity: 1, OrderStatus: OrderStatusUnspecified},
 			arg:                    &Contract{Quantity: 2},
 			wantContractedQuantity: 3,
 			wantStatus:             OrderStatusDone},
@@ -839,37 +839,37 @@ func Test_StockOrder_contract(t *testing.T) {
 	}
 }
 
-func Test_StockOrder_cancel(t *testing.T) {
+func Test_stockOrder_cancel(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name            string
-		stockOrder      *StockOrder
+		stockOrder      *stockOrder
 		arg             time.Time
 		wantOrderStatus OrderStatus
 		wantCanceledAt  time.Time
 	}{
 		{name: "ステータスがnewなら取消状態に更新",
-			stockOrder:      &StockOrder{OrderStatus: OrderStatusNew},
+			stockOrder:      &stockOrder{OrderStatus: OrderStatusNew},
 			arg:             time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local),
 			wantOrderStatus: OrderStatusCanceled,
 			wantCanceledAt:  time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local)},
 		{name: "ステータスがin_orderなら取消状態に更新",
-			stockOrder:      &StockOrder{OrderStatus: OrderStatusInOrder},
+			stockOrder:      &stockOrder{OrderStatus: OrderStatusInOrder},
 			arg:             time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local),
 			wantOrderStatus: OrderStatusCanceled,
 			wantCanceledAt:  time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local)},
 		{name: "ステータスがpartなら取消状態に更新",
-			stockOrder:      &StockOrder{OrderStatus: OrderStatusPart},
+			stockOrder:      &stockOrder{OrderStatus: OrderStatusPart},
 			arg:             time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local),
 			wantOrderStatus: OrderStatusCanceled,
 			wantCanceledAt:  time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local)},
 		{name: "ステータスがdoneなら取消状態に更新できない",
-			stockOrder:      &StockOrder{OrderStatus: OrderStatusDone},
+			stockOrder:      &stockOrder{OrderStatus: OrderStatusDone},
 			arg:             time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local),
 			wantOrderStatus: OrderStatusDone,
 			wantCanceledAt:  time.Time{}},
 		{name: "ステータスがcanceledなら取消状態に更新できない",
-			stockOrder:      &StockOrder{OrderStatus: OrderStatusCanceled, CanceledAt: time.Date(2021, 5, 18, 10, 0, 0, 0, time.Local)},
+			stockOrder:      &stockOrder{OrderStatus: OrderStatusCanceled, CanceledAt: time.Date(2021, 5, 18, 10, 0, 0, 0, time.Local)},
 			arg:             time.Date(2021, 5, 18, 11, 0, 0, 0, time.Local),
 			wantOrderStatus: OrderStatusCanceled,
 			wantCanceledAt:  time.Date(2021, 5, 18, 10, 0, 0, 0, time.Local)},
@@ -889,17 +889,17 @@ func Test_StockOrder_cancel(t *testing.T) {
 	}
 }
 
-func Test_StockOrder_activate(t *testing.T) {
+func Test_stockOrder_activate(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
-		stockOrder *StockOrder
+		stockOrder *stockOrder
 		arg1       SymbolPrice
 		arg2       time.Time
 		wantStatus OrderStatus
 	}{
 		{name: "条件を満たせば注文中になる",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				SymbolCode:         "1234",
 				OrderStatus:        OrderStatusWait,
 				ExecutionCondition: StockExecutionConditionStop,
@@ -912,7 +912,7 @@ func Test_StockOrder_activate(t *testing.T) {
 			arg2:       time.Date(2021, 5, 30, 20, 32, 0, 0, time.Local),
 			wantStatus: OrderStatusInOrder},
 		{name: "現在値の時間が5s前以前なら有効にならない",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				SymbolCode:         "1234",
 				OrderStatus:        OrderStatusWait,
 				ExecutionCondition: StockExecutionConditionStop,
@@ -925,7 +925,7 @@ func Test_StockOrder_activate(t *testing.T) {
 			arg2:       time.Date(2021, 5, 30, 20, 32, 0, 0, time.Local),
 			wantStatus: OrderStatusWait},
 		{name: "価格情報がなければ何もしない",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				SymbolCode:         "1234",
 				OrderStatus:        OrderStatusWait,
 				ExecutionCondition: StockExecutionConditionStop,
@@ -938,7 +938,7 @@ func Test_StockOrder_activate(t *testing.T) {
 			arg2:       time.Date(2021, 5, 30, 20, 32, 0, 0, time.Local),
 			wantStatus: OrderStatusWait},
 		{name: "逆指値条件が設定されていなければ何もしない",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				SymbolCode:         "1234",
 				OrderStatus:        OrderStatusWait,
 				ExecutionCondition: StockExecutionConditionStop},
@@ -946,7 +946,7 @@ func Test_StockOrder_activate(t *testing.T) {
 			arg2:       time.Date(2021, 5, 30, 20, 32, 0, 0, time.Local),
 			wantStatus: OrderStatusWait},
 		{name: "逆指値注文でなければ何もしない",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				SymbolCode:         "1234",
 				OrderStatus:        OrderStatusWait,
 				ExecutionCondition: StockExecutionConditionMO,
@@ -959,7 +959,7 @@ func Test_StockOrder_activate(t *testing.T) {
 			arg2:       time.Date(2021, 5, 30, 20, 32, 0, 0, time.Local),
 			wantStatus: OrderStatusWait},
 		{name: "注文の状態が待機でなければ何もしない",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				SymbolCode:         "1234",
 				OrderStatus:        OrderStatusPart,
 				ExecutionCondition: StockExecutionConditionStop,
@@ -972,7 +972,7 @@ func Test_StockOrder_activate(t *testing.T) {
 			arg2:       time.Date(2021, 5, 30, 20, 32, 0, 0, time.Local),
 			wantStatus: OrderStatusPart},
 		{name: "銘柄が違えば何もしない",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				SymbolCode:         "1234",
 				OrderStatus:        OrderStatusWait,
 				ExecutionCondition: StockExecutionConditionStop,
@@ -999,33 +999,33 @@ func Test_StockOrder_activate(t *testing.T) {
 	}
 }
 
-func Test_StockOrder_executionCondition(t *testing.T) {
+func Test_stockOrder_executionCondition(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
-		stockOrder *StockOrder
+		stockOrder *stockOrder
 		want       StockExecutionCondition
 	}{
 		{name: "逆指値で待機中でなく逆指値条件があれば、逆指値発動後の条件が返される",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				OrderStatus:        OrderStatusInOrder,
 				ExecutionCondition: StockExecutionConditionStop,
 				StopCondition:      &StockStopCondition{ExecutionConditionAfterHit: StockExecutionConditionMO}},
 			want: StockExecutionConditionMO},
 		{name: "逆指値で待機中でなくても、逆指値条件がなければそのまま返す",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				OrderStatus:        OrderStatusInOrder,
 				ExecutionCondition: StockExecutionConditionStop,
 				StopCondition:      nil},
 			want: StockExecutionConditionStop},
 		{name: "逆指値でも待機中なら、そのまま返す",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				OrderStatus:        OrderStatusWait,
 				ExecutionCondition: StockExecutionConditionStop,
 				StopCondition:      &StockStopCondition{ExecutionConditionAfterHit: StockExecutionConditionMO}},
 			want: StockExecutionConditionStop},
 		{name: "逆指値注文でなければそのまま返す",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				OrderStatus:        OrderStatusInOrder,
 				ExecutionCondition: StockExecutionConditionLO,
 				StopCondition:      &StockStopCondition{ExecutionConditionAfterHit: StockExecutionConditionMO}},
@@ -1044,34 +1044,34 @@ func Test_StockOrder_executionCondition(t *testing.T) {
 	}
 }
 
-func Test_StockOrder_limitPrice(t *testing.T) {
+func Test_stockOrder_limitPrice(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name       string
-		stockOrder *StockOrder
+		stockOrder *stockOrder
 		want       float64
 	}{
 		{name: "逆指値で待機中でなく逆指値条件があれば、逆指値発動後の指値価格が返される",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				OrderStatus:        OrderStatusInOrder,
 				ExecutionCondition: StockExecutionConditionStop,
 				LimitPrice:         1000,
 				StopCondition:      &StockStopCondition{ExecutionConditionAfterHit: StockExecutionConditionMO, LimitPriceAfterHit: 1500}},
 			want: 1500},
 		{name: "逆指値で待機中でなくても、逆指値条件がなければそのまま返す",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				OrderStatus:        OrderStatusInOrder,
 				ExecutionCondition: StockExecutionConditionStop,
 				StopCondition:      nil},
 			want: 0},
 		{name: "逆指値でも待機中なら、そのまま返す",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				OrderStatus:        OrderStatusWait,
 				ExecutionCondition: StockExecutionConditionStop,
 				StopCondition:      &StockStopCondition{ExecutionConditionAfterHit: StockExecutionConditionMO, LimitPriceAfterHit: 1500}},
 			want: 0},
 		{name: "逆指値注文でなければそのまま返す",
-			stockOrder: &StockOrder{
+			stockOrder: &stockOrder{
 				OrderStatus:        OrderStatusInOrder,
 				ExecutionCondition: StockExecutionConditionLO,
 				StopCondition:      &StockStopCondition{ExecutionConditionAfterHit: StockExecutionConditionMO, LimitPriceAfterHit: 1500}},
@@ -1090,28 +1090,28 @@ func Test_StockOrder_limitPrice(t *testing.T) {
 	}
 }
 
-func Test_StockOrder_expired(t *testing.T) {
+func Test_stockOrder_expired(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name            string
-		stockOrder      *StockOrder
+		stockOrder      *stockOrder
 		arg             time.Time
 		wantOrderStatus OrderStatus
 	}{
 		{name: "有効期限がゼロ値なら何もしない",
-			stockOrder:      &StockOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Time{}},
+			stockOrder:      &stockOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Time{}},
 			arg:             time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
 			wantOrderStatus: OrderStatusInOrder},
 		{name: "有効期限が現在時刻よりも過去なら取消済みにする",
-			stockOrder:      &StockOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 13, 0, 0, 0, time.Local)},
+			stockOrder:      &stockOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 13, 0, 0, 0, time.Local)},
 			arg:             time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
 			wantOrderStatus: OrderStatusCanceled},
 		{name: "有効期限が現在時刻と一致しているなら状態を変えない",
-			stockOrder:      &StockOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local)},
+			stockOrder:      &stockOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local)},
 			arg:             time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
 			wantOrderStatus: OrderStatusInOrder},
 		{name: "有効期限が現在時刻よりも未来なら状態を変えない",
-			stockOrder:      &StockOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 15, 0, 0, 0, time.Local)},
+			stockOrder:      &stockOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 15, 0, 0, 0, time.Local)},
 			arg:             time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
 			wantOrderStatus: OrderStatusInOrder},
 	}

@@ -10,13 +10,13 @@ var (
 	stockOrderStoreSingletonMutex sync.Mutex
 )
 
-func GetStockOrderStore() StockOrderStore {
+func getStockOrderStore() StockOrderStore {
 	stockOrderStoreSingletonMutex.Lock()
 	defer stockOrderStoreSingletonMutex.Unlock()
 
 	if stockOrderStoreSingleton == nil {
 		stockOrderStoreSingleton = &stockOrderStore{
-			store: map[string]*StockOrder{},
+			store: map[string]*stockOrder{},
 		}
 	}
 	return stockOrderStoreSingleton
@@ -24,24 +24,24 @@ func GetStockOrderStore() StockOrderStore {
 
 // StockOrderStore - 現物株式注文ストアのインターフェース
 type StockOrderStore interface {
-	GetAll() []*StockOrder
-	GetByCode(code string) (*StockOrder, error)
-	Add(stockOrder *StockOrder)
+	GetAll() []*stockOrder
+	GetByCode(code string) (*stockOrder, error)
+	Add(stockOrder *stockOrder)
 	RemoveByCode(code string)
 }
 
 // stockOrderStore - 現物株式注文のストア
 type stockOrderStore struct {
-	store map[string]*StockOrder
+	store map[string]*stockOrder
 	mtx   sync.Mutex
 }
 
 // GetAll - ストアのすべての注文をコード順に並べて返す
-func (s *stockOrderStore) GetAll() []*StockOrder {
+func (s *stockOrderStore) GetAll() []*stockOrder {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
-	orders := make([]*StockOrder, len(s.store))
+	orders := make([]*stockOrder, len(s.store))
 	var i int
 	for _, order := range s.store {
 		orders[i] = order
@@ -54,7 +54,7 @@ func (s *stockOrderStore) GetAll() []*StockOrder {
 }
 
 // GetByCode - コードを指定してデータを取得する
-func (s *stockOrderStore) GetByCode(code string) (*StockOrder, error) {
+func (s *stockOrderStore) GetByCode(code string) (*stockOrder, error) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
@@ -66,7 +66,7 @@ func (s *stockOrderStore) GetByCode(code string) (*StockOrder, error) {
 }
 
 // Add - 注文をストアに追加する
-func (s *stockOrderStore) Add(stockOrder *StockOrder) {
+func (s *stockOrderStore) Add(stockOrder *stockOrder) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 

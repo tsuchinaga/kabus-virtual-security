@@ -13,7 +13,7 @@ var (
 	businessDayStoreSingletonMtx sync.Mutex
 )
 
-func GetBusinessDayStore(clock Clock) BusinessDayStore {
+func getBusinessDayStore(clock Clock) BusinessDayStore {
 	businessDayStoreSingletonMtx.Lock()
 	defer businessDayStoreSingletonMtx.Unlock()
 

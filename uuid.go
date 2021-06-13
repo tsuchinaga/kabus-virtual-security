@@ -2,7 +2,7 @@ package virtual_security
 
 import "github.com/google/uuid"
 
-func NewUUIDGenerator() UUIDGenerator {
+func newUUIDGenerator() UUIDGenerator {
 	return &uuidGenerator{}
 }
 

@@ -6,10 +6,31 @@ import (
 	"testing"
 )
 
-func Test_GetStockOrderStore(t *testing.T) {
+type testStockOrderStore struct {
+	getAll              []*stockOrder
+	getByCode1          *stockOrder
+	getByCode2          error
+	getByCodeHistory    []string
+	addHistory          []*stockOrder
+	removeByCodeHistory []string
+}
+
+func (t *testStockOrderStore) GetAll() []*stockOrder { return t.getAll }
+func (t *testStockOrderStore) GetByCode(code string) (*stockOrder, error) {
+	t.getByCodeHistory = append(t.getByCodeHistory, code)
+	return t.getByCode1, t.getByCode2
+}
+func (t *testStockOrderStore) Add(stockOrder *stockOrder) {
+	t.addHistory = append(t.addHistory, stockOrder)
+}
+func (t *testStockOrderStore) RemoveByCode(code string) {
+	t.removeByCodeHistory = append(t.removeByCodeHistory, code)
+}
+
+func Test_getStockOrderStore(t *testing.T) {
 	t.Parallel()
-	got := GetStockOrderStore()
-	want := &stockOrderStore{store: map[string]*StockOrder{}}
+	got := getStockOrderStore()
+	want := &stockOrderStore{store: map[string]*stockOrder{}}
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want, got)
 	}
@@ -20,18 +41,18 @@ func Test_stockOrderStore_GetAll(t *testing.T) {
 	tests := []struct {
 		name  string
 		store *stockOrderStore
-		want  []*StockOrder
+		want  []*stockOrder
 	}{
 		{name: "storeが空なら空配列が返される",
-			store: &stockOrderStore{store: map[string]*StockOrder{}},
-			want:  []*StockOrder{}},
+			store: &stockOrderStore{store: map[string]*stockOrder{}},
+			want:  []*stockOrder{}},
 		{name: "storeにデータがあればコード順昇順にして返す",
-			store: &stockOrderStore{store: map[string]*StockOrder{
+			store: &stockOrderStore{store: map[string]*stockOrder{
 				"foo": {Code: "foo"},
 				"bar": {Code: "bar"},
 				"baz": {Code: "baz"},
 			}},
-			want: []*StockOrder{{Code: "bar"}, {Code: "baz"}, {Code: "foo"}}},
+			want: []*stockOrder{{Code: "bar"}, {Code: "baz"}, {Code: "foo"}}},
 	}
 
 	for _, test := range tests {
@@ -52,21 +73,21 @@ func Test_stockOrderStore_GetByCode(t *testing.T) {
 		name  string
 		store *stockOrderStore
 		arg   string
-		want1 *StockOrder
+		want1 *stockOrder
 		want2 error
 	}{
 		{name: "storeに指定したコードがなければエラー",
-			store: &stockOrderStore{store: map[string]*StockOrder{}},
+			store: &stockOrderStore{store: map[string]*stockOrder{}},
 			arg:   "foo",
 			want1: nil,
 			want2: NoDataError},
 		{name: "storeに指定したコードがあればその注文を返す",
-			store: &stockOrderStore{store: map[string]*StockOrder{
+			store: &stockOrderStore{store: map[string]*stockOrder{
 				"foo": {Code: "foo"},
 				"bar": {Code: "bar"},
 				"baz": {Code: "baz"}}},
 			arg:   "foo",
-			want1: &StockOrder{Code: "foo"},
+			want1: &stockOrder{Code: "foo"},
 			want2: nil},
 	}
 
@@ -87,23 +108,23 @@ func Test_stockOrderStore_Add(t *testing.T) {
 	tests := []struct {
 		name  string
 		store *stockOrderStore
-		arg   *StockOrder
-		want  map[string]*StockOrder
+		arg   *stockOrder
+		want  map[string]*stockOrder
 	}{
 		{name: "storeにコードがなければ追加",
-			store: &stockOrderStore{store: map[string]*StockOrder{
+			store: &stockOrderStore{store: map[string]*stockOrder{
 				"foo": {Code: "foo"},
 				"bar": {Code: "bar"},
 				"baz": {Code: "baz"}}},
-			arg:  &StockOrder{Code: "hoge"},
-			want: map[string]*StockOrder{"foo": {Code: "foo"}, "bar": {Code: "bar"}, "baz": {Code: "baz"}, "hoge": {Code: "hoge"}}},
+			arg:  &stockOrder{Code: "hoge"},
+			want: map[string]*stockOrder{"foo": {Code: "foo"}, "bar": {Code: "bar"}, "baz": {Code: "baz"}, "hoge": {Code: "hoge"}}},
 		{name: "storeにコードがあれば上書き",
-			store: &stockOrderStore{store: map[string]*StockOrder{
+			store: &stockOrderStore{store: map[string]*stockOrder{
 				"foo": {Code: "foo"},
 				"bar": {Code: "bar"},
 				"baz": {Code: "baz"}}},
-			arg:  &StockOrder{Code: "foo", ExecutionCondition: StockExecutionConditionMO},
-			want: map[string]*StockOrder{"foo": {Code: "foo", ExecutionCondition: StockExecutionConditionMO}, "bar": {Code: "bar"}, "baz": {Code: "baz"}}},
+			arg:  &stockOrder{Code: "foo", ExecutionCondition: StockExecutionConditionMO},
+			want: map[string]*stockOrder{"foo": {Code: "foo", ExecutionCondition: StockExecutionConditionMO}, "bar": {Code: "bar"}, "baz": {Code: "baz"}}},
 	}
 
 	for _, test := range tests {
@@ -125,16 +146,16 @@ func Test_stockOrderStore_RemoveByCode(t *testing.T) {
 		name  string
 		store *stockOrderStore
 		arg   string
-		want  map[string]*StockOrder
+		want  map[string]*stockOrder
 	}{
 		{name: "指定したコードがなければ何もない",
-			store: &stockOrderStore{store: map[string]*StockOrder{"1234": {Code: "1234"}, "2345": {Code: "2345"}, "3456": {Code: "3456"}}},
+			store: &stockOrderStore{store: map[string]*stockOrder{"1234": {Code: "1234"}, "2345": {Code: "2345"}, "3456": {Code: "3456"}}},
 			arg:   "0000",
-			want:  map[string]*StockOrder{"1234": {Code: "1234"}, "2345": {Code: "2345"}, "3456": {Code: "3456"}}},
+			want:  map[string]*stockOrder{"1234": {Code: "1234"}, "2345": {Code: "2345"}, "3456": {Code: "3456"}}},
 		{name: "指定したコードがあれば削除する",
-			store: &stockOrderStore{store: map[string]*StockOrder{"1234": {Code: "1234"}, "2345": {Code: "2345"}, "3456": {Code: "3456"}}},
+			store: &stockOrderStore{store: map[string]*stockOrder{"1234": {Code: "1234"}, "2345": {Code: "2345"}, "3456": {Code: "3456"}}},
 			arg:   "2345",
-			want:  map[string]*StockOrder{"1234": {Code: "1234"}, "3456": {Code: "3456"}}},
+			want:  map[string]*stockOrder{"1234": {Code: "1234"}, "3456": {Code: "3456"}}},
 	}
 
 	for _, test := range tests {

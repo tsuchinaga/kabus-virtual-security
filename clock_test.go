@@ -13,9 +13,9 @@ type testClock struct {
 
 func (t *testClock) Now() time.Time { return t.now }
 
-func Test_NewClock(t *testing.T) {
+func Test_newClock(t *testing.T) {
 	want := &clock{}
-	got := NewClock()
+	got := newClock()
 	t.Parallel()
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want, got)

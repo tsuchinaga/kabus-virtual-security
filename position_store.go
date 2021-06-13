@@ -10,13 +10,13 @@ var (
 	stockPositionStoreSingletonMutex sync.Mutex
 )
 
-func GetStockPositionStore() StockPositionStore {
+func getStockPositionStore() StockPositionStore {
 	stockPositionStoreSingletonMutex.Lock()
 	defer stockPositionStoreSingletonMutex.Unlock()
 
 	if stockPositionStoreSingleton == nil {
 		stockPositionStoreSingleton = &stockPositionStore{
-			store: map[string]*StockPosition{},
+			store: map[string]*stockPosition{},
 		}
 	}
 	return stockPositionStoreSingleton
@@ -24,24 +24,24 @@ func GetStockPositionStore() StockPositionStore {
 
 // StockPositionStore - 現物株式ポジションストアのインターフェース
 type StockPositionStore interface {
-	GetAll() []*StockPosition
-	GetByCode(code string) (*StockPosition, error)
-	Add(stockPosition *StockPosition)
+	GetAll() []*stockPosition
+	GetByCode(code string) (*stockPosition, error)
+	Add(stockPosition *stockPosition)
 	RemoveByCode(code string)
 }
 
 // stockPositionStore - 現物株式ポジションのストア
 type stockPositionStore struct {
-	store map[string]*StockPosition
+	store map[string]*stockPosition
 	mtx   sync.Mutex
 }
 
 // GetAll - ストアのすべてのポジションをコード順に並べて返す
-func (s *stockPositionStore) GetAll() []*StockPosition {
+func (s *stockPositionStore) GetAll() []*stockPosition {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
-	positions := make([]*StockPosition, len(s.store))
+	positions := make([]*stockPosition, len(s.store))
 	var i int
 	for _, position := range s.store {
 		positions[i] = position
@@ -54,7 +54,7 @@ func (s *stockPositionStore) GetAll() []*StockPosition {
 }
 
 // GetByCode - コードを指定してデータを取得する
-func (s *stockPositionStore) GetByCode(code string) (*StockPosition, error) {
+func (s *stockPositionStore) GetByCode(code string) (*stockPosition, error) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
@@ -66,7 +66,7 @@ func (s *stockPositionStore) GetByCode(code string) (*StockPosition, error) {
 }
 
 // Add - ポジションをストアに追加する
-func (s *stockPositionStore) Add(stockPosition *StockPosition) {
+func (s *stockPositionStore) Add(stockPosition *stockPosition) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 

@@ -10,8 +10,8 @@ var (
 	priceStoreSingletonMutex sync.Mutex
 )
 
-// GetPriceStore - 価格ストアの取得
-func GetPriceStore(clock Clock) PriceStore {
+// getPriceStore - 価格ストアの取得
+func getPriceStore(clock Clock) PriceStore {
 	priceStoreSingletonMutex.Lock()
 	defer priceStoreSingletonMutex.Unlock()
 
@@ -68,7 +68,7 @@ func (s *priceStore) Set(price SymbolPrice) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
-	symbolPriceTime := price.MaxTime()
+	symbolPriceTime := price.maxTime()
 
 	// 現値、売り気配、買い気配のいずれの時間もゼロ値なら無視
 	if symbolPriceTime.IsZero() {

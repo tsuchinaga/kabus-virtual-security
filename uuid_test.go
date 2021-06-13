@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-func Test_NewUUIDGenerator(t *testing.T) {
+func Test_newUUIDGenerator(t *testing.T) {
 	want := &uuidGenerator{}
-	got := NewUUIDGenerator()
+	got := newUUIDGenerator()
 	t.Parallel()
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want, got)

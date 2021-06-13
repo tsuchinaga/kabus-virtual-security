@@ -8,7 +8,7 @@ type Clock interface {
 	Now() time.Time
 }
 
-func NewClock() Clock {
+func newClock() Clock {
 	return &clock{}
 }
 
