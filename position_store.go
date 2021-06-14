@@ -23,7 +23,6 @@ func getStockPositionStore() StockPositionStore {
 }
 
 // StockPositionStore - 現物株式ポジションストアのインターフェース
-// TODO clean って名前で、一定期間更新されていない終了している注文を消す処理を追加する
 type StockPositionStore interface {
 	GetAll() []*stockPosition
 	GetByCode(code string) (*stockPosition, error)

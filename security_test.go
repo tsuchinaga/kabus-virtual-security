@@ -17,12 +17,14 @@ func Test_security_StockOrders(t *testing.T) {
 	}{
 		{name: "storeに注文がなければ空配列",
 			security: security{
+				clock:           &testClock{now: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
 				stockOrderStore: &testStockOrderStore{getAll: []*stockOrder{}},
 			},
 			want1: []*StockOrder{},
 			want2: nil},
 		{name: "storeにある注文をStockOrderに入れ替えて返す",
 			security: security{
+				clock: &testClock{now: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
 				stockOrderStore: &testStockOrderStore{getAll: []*stockOrder{
 					{
 						Code:               "sor_1234",
@@ -68,16 +70,30 @@ func Test_security_StockOrders(t *testing.T) {
 			want2: nil},
 		{name: "storeに複数注文があれば全部返す",
 			security: security{
+				clock: &testClock{now: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
 				stockOrderStore: &testStockOrderStore{getAll: []*stockOrder{
-					{Code: "sor_1234"},
-					{Code: "sor_2345"},
-					{Code: "sor_3456"},
+					{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
+					{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
+					{Code: "sor_3456", OrderStatus: OrderStatusInOrder},
 				}},
 			},
 			want1: []*StockOrder{
-				{Code: "sor_1234"},
-				{Code: "sor_2345"},
-				{Code: "sor_3456"},
+				{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
+				{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
+				{Code: "sor_3456", OrderStatus: OrderStatusInOrder},
+			},
+			want2: nil},
+		{name: "storeにある注文が死んだ注文なら返さない",
+			security: security{
+				clock: &testClock{now: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
+				stockOrderStore: &testStockOrderStore{getAll: []*stockOrder{
+					{Code: "sor_1234", OrderStatus: OrderStatusDone},
+					{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
+					{Code: "sor_3456", OrderStatus: OrderStatusCanceled},
+				}},
+			},
+			want1: []*StockOrder{
+				{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
 			},
 			want2: nil},
 	}
@@ -141,15 +157,27 @@ func Test_security_StockPositions(t *testing.T) {
 		{name: "storeに複数データがあれば全部返す",
 			security: security{stockPositionStore: &testStockPositionStore{
 				getAll: []*stockPosition{
-					{Code: "spo_1234"},
-					{Code: "spo_2345"},
-					{Code: "spo_3456"},
+					{Code: "spo_1234", OwnedQuantity: 100},
+					{Code: "spo_2345", OwnedQuantity: 100},
+					{Code: "spo_3456", OwnedQuantity: 100},
 				},
 			}},
 			want1: []*StockPosition{
-				{Code: "spo_1234"},
-				{Code: "spo_2345"},
-				{Code: "spo_3456"},
+				{Code: "spo_1234", OwnedQuantity: 100},
+				{Code: "spo_2345", OwnedQuantity: 100},
+				{Code: "spo_3456", OwnedQuantity: 100},
+			},
+			want2: nil},
+		{name: "storeのデータが死んでいたら返さない",
+			security: security{stockPositionStore: &testStockPositionStore{
+				getAll: []*stockPosition{
+					{Code: "spo_1234", OwnedQuantity: 0},
+					{Code: "spo_2345", OwnedQuantity: 100},
+					{Code: "spo_3456", OwnedQuantity: 0},
+				},
+			}},
+			want1: []*StockPosition{
+				{Code: "spo_2345", OwnedQuantity: 100},
 			},
 			want2: nil},
 	}

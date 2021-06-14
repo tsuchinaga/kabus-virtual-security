@@ -1,7 +1,6 @@
 package virtual_security
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 	"time"
@@ -1129,100 +1128,61 @@ func Test_stockOrder_expired(t *testing.T) {
 	}
 }
 
-func Test_stockPosition_Exit(t *testing.T) {
+func Test_stockOrder_isDied(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name              string
-		position          *stockPosition
-		arg               float64
-		wantOwnedQuantity float64
-		want              error
+		name       string
+		stockOrder *stockOrder
+		arg        time.Time
+		want       bool
 	}{
-		{name: "エグジットできるなら保有数を減らす",
-			position:          &stockPosition{OwnedQuantity: 300},
-			arg:               100,
-			wantOwnedQuantity: 200,
-			want:              nil},
-		{name: "エグジットできないなら保有数を減らさず、エラーを返す",
-			position:          &stockPosition{OwnedQuantity: 300},
-			arg:               500,
-			wantOwnedQuantity: 300,
-			want:              NotEnoughOwnedQuantity},
+		{name: "未終了の注文なら生きている",
+			stockOrder: &stockOrder{OrderStatus: OrderStatusInOrder},
+			arg:        time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local),
+			want:       false},
+		{name: "取消済み注文で、取消から1日以内なら生きている",
+			stockOrder: &stockOrder{OrderStatus: OrderStatusCanceled, CanceledAt: time.Date(2021, 6, 14, 11, 0, 0, 0, time.Local)},
+			arg:        time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local),
+			want:       false},
+		{name: "取消済み注文で、取消から1日丁度なら生きている",
+			stockOrder: &stockOrder{OrderStatus: OrderStatusCanceled, CanceledAt: time.Date(2021, 6, 14, 10, 0, 0, 0, time.Local)},
+			arg:        time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local),
+			want:       false},
+		{name: "取消済み注文で、取消から1日以上経っていたら死んでいる",
+			stockOrder: &stockOrder{OrderStatus: OrderStatusCanceled, CanceledAt: time.Date(2021, 6, 14, 9, 0, 0, 0, time.Local)},
+			arg:        time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local),
+			want:       true},
+		{name: "約定済み注文で、最後の約定から1日以内なら生きている",
+			stockOrder: &stockOrder{OrderStatus: OrderStatusDone, Contracts: []*Contract{
+				{ContractedAt: time.Date(2021, 6, 14, 9, 0, 0, 0, time.Local)},
+				{ContractedAt: time.Date(2021, 6, 14, 11, 0, 0, 0, time.Local)}}},
+			arg:  time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local),
+			want: false},
+		{name: "約定済み注文で、最後の約定から1日丁度なら生きている",
+			stockOrder: &stockOrder{OrderStatus: OrderStatusDone, Contracts: []*Contract{
+				{ContractedAt: time.Date(2021, 6, 14, 9, 0, 0, 0, time.Local)},
+				{ContractedAt: time.Date(2021, 6, 14, 10, 0, 0, 0, time.Local)}}},
+			arg:  time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local),
+			want: false},
+		{name: "約定済み注文で、最後の約定から1日以上経っていたら死んでいる",
+			stockOrder: &stockOrder{OrderStatus: OrderStatusDone, Contracts: []*Contract{
+				{ContractedAt: time.Date(2021, 6, 14, 9, 0, 0, 0, time.Local)},
+				{ContractedAt: time.Date(2021, 6, 14, 9, 30, 0, 0, time.Local)}}},
+			arg:  time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local),
+			want: true},
+		{name: "終了した注文で、取消も約定も情報が無かったら死んだものとする",
+			stockOrder: &stockOrder{OrderStatus: OrderStatusDone, Contracts: []*Contract{}},
+			arg:        time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local),
+			want:       true},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got := test.position.Exit(test.arg)
-			if !reflect.DeepEqual(test.wantOwnedQuantity, test.position.OwnedQuantity) || !errors.Is(got, test.want) {
-				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.wantOwnedQuantity, test.want, test.position.OwnedQuantity, got)
-			}
-		})
-	}
-}
-
-func Test_stockPosition_Hold(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name             string
-		position         *stockPosition
-		arg              float64
-		wantHoldQuantity float64
-		want             error
-	}{
-		{name: "拘束できるなら拘束数を増やす",
-			position:         &stockPosition{OwnedQuantity: 300, HoldQuantity: 200},
-			arg:              100,
-			wantHoldQuantity: 300,
-			want:             nil},
-		{name: "拘束できないなら拘束数を増やさず、エラーを返す",
-			position:         &stockPosition{OwnedQuantity: 300, HoldQuantity: 100},
-			arg:              300,
-			wantHoldQuantity: 100,
-			want:             NotEnoughOwnedQuantity},
-	}
-
-	for _, test := range tests {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			got := test.position.Hold(test.arg)
-			if !reflect.DeepEqual(test.wantHoldQuantity, test.position.HoldQuantity) || !errors.Is(got, test.want) {
-				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.wantHoldQuantity, test.want, test.position.HoldQuantity, got)
-			}
-		})
-	}
-}
-
-func Test_stockPosition_Release(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name             string
-		position         *stockPosition
-		arg              float64
-		wantHoldQuantity float64
-		want             error
-	}{
-		{name: "拘束を解放できるなら拘束数を減らす",
-			position:         &stockPosition{HoldQuantity: 300},
-			arg:              100,
-			wantHoldQuantity: 200,
-			want:             nil},
-		{name: "拘束を解放できないなら拘束数を減らさず、エラーを返す",
-			position:         &stockPosition{HoldQuantity: 100},
-			arg:              200,
-			wantHoldQuantity: 100,
-			want:             NotEnoughHoldQuantity},
-	}
-
-	for _, test := range tests {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			got := test.position.Release(test.arg)
-			if !reflect.DeepEqual(test.wantHoldQuantity, test.position.HoldQuantity) || !errors.Is(got, test.want) {
-				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.wantHoldQuantity, test.want, test.position.HoldQuantity, got)
+			got := test.stockOrder.isDied(test.arg)
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
 		})
 	}

@@ -27,6 +27,29 @@ type stockOrder struct {
 	mtx                sync.Mutex
 }
 
+func (o *stockOrder) isDied(now time.Time) bool {
+	// 未終了のステータスなら死んでいない
+	if !o.OrderStatus.IsFixed() {
+		return false
+	}
+
+	border := now.AddDate(0, 0, -1)
+
+	// キャンセル日時があって、1日以上前なら死んだ注文
+	if !o.CanceledAt.IsZero() && o.CanceledAt.Before(border) {
+		return true
+	}
+	// 約定情報があって、最後の約定情報が1日以上前なら死んだ注文
+	if o.Contracts != nil && len(o.Contracts) > 0 && o.Contracts[len(o.Contracts)-1].ContractedAt.Before(border) {
+		return true
+	}
+	// キャンセル日時も約定情報もない終了している注文は死んだものとする
+	if o.CanceledAt.IsZero() && (o.Contracts == nil || len(o.Contracts) < 1) {
+		return true
+	}
+	return false
+}
+
 func (o *stockOrder) isContractableTime(session Session) bool {
 	return (o.executionCondition().IsContractableMorningSession() && session == SessionMorning) ||
 		(o.executionCondition().IsContractableMorningSessionClosing() && session == SessionMorning) ||
@@ -384,53 +407,4 @@ func (o *stockOrder) cancel(canceledAt time.Time) {
 		o.CanceledAt = canceledAt
 		o.OrderStatus = OrderStatusCanceled
 	}
-}
-
-// stockPosition - 現物ポジション
-type stockPosition struct {
-	Code               string    // ポジションコード
-	OrderCode          string    // 注文コード
-	SymbolCode         string    // 銘柄コード
-	Exchange           Exchange  // 市場
-	Side               Side      // 売買方向
-	ContractedQuantity float64   // 約定数量
-	OwnedQuantity      float64   // 保有数量
-	HoldQuantity       float64   // 拘束数量
-	ContractedAt       time.Time // 約定日時
-	mtx                sync.Mutex
-}
-
-// Exit - ポジションをエグジットする
-func (p *stockPosition) Exit(quantity float64) error {
-	p.mtx.Lock()
-	defer p.mtx.Unlock()
-
-	if p.OwnedQuantity < quantity {
-		return NotEnoughOwnedQuantity
-	}
-	p.OwnedQuantity -= quantity
-	return nil
-}
-
-// Hold - ポジションの保有数を拘束する
-func (p *stockPosition) Hold(quantity float64) error {
-	p.mtx.Lock()
-	defer p.mtx.Unlock()
-
-	if p.OwnedQuantity < p.HoldQuantity+quantity {
-		return NotEnoughOwnedQuantity
-	}
-	p.HoldQuantity += quantity
-	return nil
-}
-
-// Release - ポジションの拘束数を開放する
-func (p *stockPosition) Release(quantity float64) error {
-	p.mtx.Lock()
-	defer p.mtx.Unlock()
-	if p.HoldQuantity-quantity < 0 {
-		return NotEnoughHoldQuantity
-	}
-	p.HoldQuantity -= quantity
-	return nil
 }
