@@ -1,17 +1,38 @@
 package virtual_security
 
+import "fmt"
+
 type Security interface {
-	RegisterPrice(symbolPrice SymbolPrice) (*UpdatedOrders, error)     // 銘柄価格の登録
-	StockOrder(order *StockOrderRequest) (*OrderResult, error)         // 現物注文
-	CancelOrder(cancelOrder *CancelOrderRequest) (*OrderResult, error) // 注文の取り消し
-	StockOrders() ([]*StockOrder, error)                               // 現物注文一覧
-	StockPositions() ([]*StockPosition, error)                         // 現物ポジション一覧
+	RegisterPrice(symbolPrice SymbolPrice) (*UpdatedOrders, error) // 銘柄価格の登録
+	StockOrder(order *StockOrderRequest) (*OrderResult, error)     // 現物注文
+	CancelStockOrder(cancelOrder *CancelOrderRequest) error        // 注文の取り消し
+	StockOrders() ([]*StockOrder, error)                           // 現物注文一覧
+	StockPositions() ([]*StockPosition, error)                     // 現物ポジション一覧
 }
 
 type security struct {
 	clock              Clock
 	stockOrderStore    StockOrderStore
 	stockPositionStore StockPositionStore
+}
+
+// CancelStockOrder - 現物注文の取消
+func (s *security) CancelStockOrder(cancelOrder *CancelOrderRequest) error {
+	if cancelOrder == nil {
+		return fmt.Errorf("cancelOrder is nil, %w", NilArgumentError)
+	}
+
+	order, err := s.stockOrderStore.GetByCode(cancelOrder.OrderCode)
+	if err != nil {
+		return fmt.Errorf("not found stock order(code: %s), %w", cancelOrder.OrderCode, err)
+	}
+
+	if !order.OrderStatus.IsCancelable() {
+		return UncancellableOrderError
+	}
+
+	order.cancel(s.clock.Now())
+	return nil
 }
 
 // StockOrders - 現物注文一覧

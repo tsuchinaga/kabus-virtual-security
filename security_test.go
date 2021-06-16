@@ -193,3 +193,58 @@ func Test_security_StockPositions(t *testing.T) {
 		})
 	}
 }
+
+func Test_security_CancelStockOrder(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		security *security
+		arg      *CancelOrderRequest
+		want     error
+	}{
+		{name: "注文がなければstoreからエラーが返されるので、そのエラーかラップしたエラーを返す",
+			security: &security{
+				clock: &testClock{now: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
+				stockOrderStore: &testStockOrderStore{
+					getByCode1: nil,
+					getByCode2: NoDataError,
+				}},
+			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
+			want: NoDataError},
+		{name: "引数がnilならエラー",
+			security: &security{
+				clock:           &testClock{now: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
+				stockOrderStore: &testStockOrderStore{}},
+			arg:  nil,
+			want: NilArgumentError},
+		{name: "キャンセル不可な状態の注文ならエラー",
+			security: &security{
+				clock: &testClock{now: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
+				stockOrderStore: &testStockOrderStore{
+					getByCode1: &stockOrder{Code: "sor_1234", OrderStatus: OrderStatusCanceled},
+					getByCode2: nil,
+				}},
+			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
+			want: UncancellableOrderError},
+		{name: "キャンセル可能な注文ならエラーなし",
+			security: &security{
+				clock: &testClock{now: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
+				stockOrderStore: &testStockOrderStore{
+					getByCode1: &stockOrder{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
+					getByCode2: nil,
+				}},
+			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
+			want: nil},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got := test.security.CancelStockOrder(test.arg)
+			if !errors.Is(got, test.want) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}

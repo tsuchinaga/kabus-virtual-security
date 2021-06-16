@@ -20,10 +20,16 @@ func (t *testStockOrderStore) GetByCode(code string) (*stockOrder, error) {
 	t.getByCodeHistory = append(t.getByCodeHistory, code)
 	return t.getByCode1, t.getByCode2
 }
-func (t *testStockOrderStore) Add(stockOrder *stockOrder) {
-	t.addHistory = append(t.addHistory, stockOrder)
+func (t *testStockOrderStore) Add(order *stockOrder) {
+	if t.addHistory == nil {
+		t.addHistory = []*stockOrder{}
+	}
+	t.addHistory = append(t.addHistory, order)
 }
 func (t *testStockOrderStore) RemoveByCode(code string) {
+	if t.removeByCodeHistory == nil {
+		t.removeByCodeHistory = []string{}
+	}
 	t.removeByCodeHistory = append(t.removeByCodeHistory, code)
 }
 

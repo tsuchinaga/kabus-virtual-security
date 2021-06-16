@@ -27,13 +27,13 @@ func Test_stockPosition_exit(t *testing.T) {
 			arg:               500,
 			wantOwnedQuantity: 300,
 			wantHoldQuantity:  300,
-			want:              NotEnoughOwnedQuantity},
+			want:              NotEnoughOwnedQuantityError},
 		{name: "拘束数不足でエグジットできないなら、エラーを返す",
 			position:          &stockPosition{OwnedQuantity: 300, HoldQuantity: 200},
 			arg:               300,
 			wantOwnedQuantity: 300,
 			wantHoldQuantity:  200,
-			want:              NotEnoughHoldQuantity},
+			want:              NotEnoughHoldQuantityError},
 	}
 
 	for _, test := range tests {
@@ -70,7 +70,7 @@ func Test_stockPosition_hold(t *testing.T) {
 			position:         &stockPosition{OwnedQuantity: 300, HoldQuantity: 100},
 			arg:              300,
 			wantHoldQuantity: 100,
-			want:             NotEnoughOwnedQuantity},
+			want:             NotEnoughOwnedQuantityError},
 	}
 
 	for _, test := range tests {
@@ -103,7 +103,7 @@ func Test_stockPosition_release(t *testing.T) {
 			position:         &stockPosition{HoldQuantity: 100},
 			arg:              200,
 			wantHoldQuantity: 100,
-			want:             NotEnoughHoldQuantity},
+			want:             NotEnoughHoldQuantityError},
 	}
 
 	for _, test := range tests {

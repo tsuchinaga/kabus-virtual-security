@@ -25,10 +25,10 @@ func (p *stockPosition) exit(quantity float64) error {
 	defer p.mtx.Unlock()
 
 	if p.OwnedQuantity < quantity {
-		return NotEnoughOwnedQuantity
+		return NotEnoughOwnedQuantityError
 	}
 	if p.HoldQuantity < quantity {
-		return NotEnoughHoldQuantity
+		return NotEnoughHoldQuantityError
 	}
 	p.OwnedQuantity -= quantity
 	p.HoldQuantity -= quantity
@@ -41,7 +41,7 @@ func (p *stockPosition) hold(quantity float64) error {
 	defer p.mtx.Unlock()
 
 	if p.OwnedQuantity < p.HoldQuantity+quantity {
-		return NotEnoughOwnedQuantity
+		return NotEnoughOwnedQuantityError
 	}
 	p.HoldQuantity += quantity
 	return nil
@@ -52,7 +52,7 @@ func (p *stockPosition) release(quantity float64) error {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 	if p.HoldQuantity-quantity < 0 {
-		return NotEnoughHoldQuantity
+		return NotEnoughHoldQuantityError
 	}
 	p.HoldQuantity -= quantity
 	return nil
