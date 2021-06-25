@@ -23,7 +23,7 @@ func (t *testStockPositionStore) GetByCode(code string) (*stockPosition, error) 
 func (t *testStockPositionStore) Add(stockPosition *stockPosition) {
 	t.addHistory = append(t.addHistory, stockPosition)
 }
-func (t testStockPositionStore) RemoveByCode(code string) {
+func (t *testStockPositionStore) RemoveByCode(code string) {
 	t.removeByCodeHistory = append(t.removeByCodeHistory, code)
 }
 

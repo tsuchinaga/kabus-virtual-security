@@ -11,6 +11,7 @@ type testStockOrderStore struct {
 	getByCode1          *stockOrder
 	getByCode2          error
 	getByCodeHistory    []string
+	add                 error
 	addHistory          []*stockOrder
 	removeByCodeHistory []string
 }
@@ -20,11 +21,12 @@ func (t *testStockOrderStore) GetByCode(code string) (*stockOrder, error) {
 	t.getByCodeHistory = append(t.getByCodeHistory, code)
 	return t.getByCode1, t.getByCode2
 }
-func (t *testStockOrderStore) Add(order *stockOrder) {
+func (t *testStockOrderStore) Add(order *stockOrder) error {
 	if t.addHistory == nil {
 		t.addHistory = []*stockOrder{}
 	}
 	t.addHistory = append(t.addHistory, order)
+	return t.add
 }
 func (t *testStockOrderStore) RemoveByCode(code string) {
 	if t.removeByCodeHistory == nil {
@@ -112,35 +114,40 @@ func Test_stockOrderStore_GetByCode(t *testing.T) {
 func Test_stockOrderStore_Add(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name  string
-		store *stockOrderStore
-		arg   *stockOrder
-		want  map[string]*stockOrder
+		name      string
+		store     *stockOrderStore
+		arg       *stockOrder
+		want      error
+		wantStore map[string]*stockOrder
 	}{
 		{name: "storeにコードがなければ追加",
 			store: &stockOrderStore{store: map[string]*stockOrder{
 				"foo": {Code: "foo"},
 				"bar": {Code: "bar"},
 				"baz": {Code: "baz"}}},
-			arg:  &stockOrder{Code: "hoge"},
-			want: map[string]*stockOrder{"foo": {Code: "foo"}, "bar": {Code: "bar"}, "baz": {Code: "baz"}, "hoge": {Code: "hoge"}}},
+			arg:       &stockOrder{Code: "hoge"},
+			wantStore: map[string]*stockOrder{"foo": {Code: "foo"}, "bar": {Code: "bar"}, "baz": {Code: "baz"}, "hoge": {Code: "hoge"}}},
 		{name: "storeにコードがあれば上書き",
 			store: &stockOrderStore{store: map[string]*stockOrder{
 				"foo": {Code: "foo"},
 				"bar": {Code: "bar"},
 				"baz": {Code: "baz"}}},
-			arg:  &stockOrder{Code: "foo", ExecutionCondition: StockExecutionConditionMO},
-			want: map[string]*stockOrder{"foo": {Code: "foo", ExecutionCondition: StockExecutionConditionMO}, "bar": {Code: "bar"}, "baz": {Code: "baz"}}},
+			arg:       &stockOrder{Code: "foo", ExecutionCondition: StockExecutionConditionMO},
+			wantStore: map[string]*stockOrder{"foo": {Code: "foo", ExecutionCondition: StockExecutionConditionMO}, "bar": {Code: "bar"}, "baz": {Code: "baz"}}},
+		{name: "引数がnilならエラーを返す",
+			store:     &stockOrderStore{store: map[string]*stockOrder{}},
+			arg:       nil,
+			want:      NilArgumentError,
+			wantStore: map[string]*stockOrder{}},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			test.store.Add(test.arg)
-			got := test.store.store
-			if !reflect.DeepEqual(test.want, got) {
-				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			got := test.store.Add(test.arg)
+			if !errors.Is(got, test.want) || !reflect.DeepEqual(test.wantStore, test.store.store) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want, test.wantStore, got, test.store.store)
 			}
 		})
 	}

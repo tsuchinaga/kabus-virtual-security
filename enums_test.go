@@ -428,3 +428,66 @@ func Test_ComparisonOperator_CompareFloat64(t *testing.T) {
 		})
 	}
 }
+
+func Test_Side_isValid(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		side Side
+		want bool
+	}{
+		{name: "buy は有効", side: SideBuy, want: true},
+		{name: "sell は有効", side: SideSell, want: true},
+		{name: "空文字 は無効", side: SideUnspecified, want: false},
+		{name: "foo は無効", side: Side("foo"), want: false},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got := test.side.isValid()
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_StockExecutionCondition_isValid(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                    string
+		stockExecutionCondition StockExecutionCondition
+		want                    bool
+	}{
+		{name: "mo は有効", stockExecutionCondition: StockExecutionConditionMO, want: true},
+		{name: "momo は有効", stockExecutionCondition: StockExecutionConditionMOMO, want: true},
+		{name: "moao は有効", stockExecutionCondition: StockExecutionConditionMOAO, want: true},
+		{name: "momc は有効", stockExecutionCondition: StockExecutionConditionMOMC, want: true},
+		{name: "moac は有効", stockExecutionCondition: StockExecutionConditionMOAC, want: true},
+		{name: "ioc_mo は有効", stockExecutionCondition: StockExecutionConditionIOCMO, want: true},
+		{name: "lo は有効", stockExecutionCondition: StockExecutionConditionLO, want: true},
+		{name: "lomo は有効", stockExecutionCondition: StockExecutionConditionLOMO, want: true},
+		{name: "loao は有効", stockExecutionCondition: StockExecutionConditionLOAO, want: true},
+		{name: "lomc は有効", stockExecutionCondition: StockExecutionConditionLOMC, want: true},
+		{name: "loac は有効", stockExecutionCondition: StockExecutionConditionLOAC, want: true},
+		{name: "ioc_lo は有効", stockExecutionCondition: StockExecutionConditionIOCLO, want: true},
+		{name: "不成M は有効", stockExecutionCondition: StockExecutionConditionFunariM, want: true},
+		{name: "不成A は有効", stockExecutionCondition: StockExecutionConditionFunariA, want: true},
+		{name: "stop は有効", stockExecutionCondition: StockExecutionConditionStop, want: true},
+		{name: "unspecified は無効", stockExecutionCondition: StockExecutionConditionUnspecified, want: false},
+		{name: "foo は無効", stockExecutionCondition: StockExecutionCondition("foo"), want: false},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got := test.stockExecutionCondition.isValid()
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}

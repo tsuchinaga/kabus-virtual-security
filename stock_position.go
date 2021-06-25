@@ -10,14 +10,22 @@ type stockPosition struct {
 	Code               string    // ポジションコード
 	OrderCode          string    // 注文コード
 	SymbolCode         string    // 銘柄コード
-	Exchange           Exchange  // 市場
-	Side               Side      // 売買方向
+	Side               Side      // 方向
 	ContractedQuantity float64   // 約定数量
 	OwnedQuantity      float64   // 保有数量
 	HoldQuantity       float64   // 拘束数量
 	ContractedAt       time.Time // 約定日時
 	mtx                sync.Mutex
 }
+
+// デバッグなどで必要になったときに使う
+//func (p *stockPosition) String() string {
+//	if b, err := json.Marshal(p); err != nil {
+//		return err.Error()
+//	} else {
+//		return string(b)
+//	}
+//}
 
 // exit - 拘束されているポジションをエグジットする
 func (p *stockPosition) exit(quantity float64) error {

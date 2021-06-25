@@ -17,7 +17,7 @@ func getPriceStore(clock Clock) PriceStore {
 
 	if priceStoreSingleton == nil {
 		store := &priceStore{
-			store: map[string]SymbolPrice{},
+			store: map[string]*symbolPrice{},
 			clock: clock,
 		}
 		store.setCalculatedExpireTime(clock.Now())
@@ -28,13 +28,13 @@ func getPriceStore(clock Clock) PriceStore {
 
 // PriceStore - 価格ストアのインターフェース
 type PriceStore interface {
-	GetBySymbolCode(symbolCode string) (SymbolPrice, error)
-	Set(price SymbolPrice)
+	GetBySymbolCode(symbolCode string) (*symbolPrice, error)
+	Set(price *symbolPrice) error
 }
 
 // priceStore - 価格ストア
 type priceStore struct {
-	store      map[string]SymbolPrice
+	store      map[string]*symbolPrice
 	clock      Clock
 	expireTime time.Time
 	mtx        sync.Mutex
@@ -52,37 +52,40 @@ func (s *priceStore) setCalculatedExpireTime(now time.Time) {
 }
 
 // GetBySymbolCode - ストアから指定した銘柄コードの価格を取り出す
-func (s *priceStore) GetBySymbolCode(symbolCode string) (SymbolPrice, error) {
+func (s *priceStore) GetBySymbolCode(symbolCode string) (*symbolPrice, error) {
 	if price, ok := s.store[symbolCode]; ok {
 		if s.isExpired(s.clock.Now()) {
-			return SymbolPrice{}, ExpiredDataError
+			return nil, ExpiredDataError
 		}
 		return price, nil
 	} else {
-		return SymbolPrice{}, NoDataError
+		return nil, NoDataError
 	}
 }
 
 // Set - ストアに銘柄の価格情報を登録する
-func (s *priceStore) Set(price SymbolPrice) {
+func (s *priceStore) Set(price *symbolPrice) error {
+	if price == nil {
+		return NilArgumentError
+	}
+
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
-	symbolPriceTime := price.maxTime()
-
 	// 現値、売り気配、買い気配のいずれの時間もゼロ値なら無視
-	if symbolPriceTime.IsZero() {
-		return
+	if price.maxTime().IsZero() {
+		return nil
 	}
 
 	// storeの有効期限が切れていたら初期化
 	//   有効期限は次の8時まで
 	now := s.clock.Now()
 	if s.isExpired(now) {
-		s.store = map[string]SymbolPrice{}
+		s.store = map[string]*symbolPrice{}
 		s.setCalculatedExpireTime(now)
 	}
 
 	// ストアにセット
 	s.store[price.SymbolCode] = price
+	return nil
 }

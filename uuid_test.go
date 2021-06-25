@@ -5,6 +5,16 @@ import (
 	"testing"
 )
 
+type testUUIDGenerator struct {
+	i         int
+	generator []string
+}
+
+func (t *testUUIDGenerator) Generate() string {
+	defer func() { t.i++ }()
+	return t.generator[t.i%len(t.generator)]
+}
+
 func Test_newUUIDGenerator(t *testing.T) {
 	want := &uuidGenerator{}
 	got := newUUIDGenerator()

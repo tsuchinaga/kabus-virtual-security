@@ -1,11 +1,12 @@
 package virtual_security
 
-import "time"
+import (
+	"time"
+)
 
-// SymbolPrice - 銘柄の価格
-type SymbolPrice struct {
+// symbolPrice - 銘柄の価格
+type symbolPrice struct {
 	SymbolCode string    // 銘柄コード
-	Exchange   Exchange  // 市場種別
 	Price      float64   // 価格
 	PriceTime  time.Time // 価格日時
 	Ask        float64   // 買気配値
@@ -15,7 +16,7 @@ type SymbolPrice struct {
 	kind       PriceKind // 種別
 }
 
-func (e *SymbolPrice) maxTime() time.Time {
+func (e *symbolPrice) maxTime() time.Time {
 	var maxTime time.Time
 	if maxTime.Before(e.PriceTime) {
 		maxTime = e.PriceTime
@@ -27,12 +28,6 @@ func (e *SymbolPrice) maxTime() time.Time {
 		maxTime = e.AskTime
 	}
 	return maxTime
-}
-
-// sessionInfo - セッション情報
-type sessionInfo struct {
-	Session Session // セッション
-	Timing  Timing  // タイミング
 }
 
 // UpdatedOrders - 更新された注文
@@ -55,7 +50,6 @@ type StockOrder struct {
 	Side               Side                    // 売買方向
 	ExecutionCondition StockExecutionCondition // 株式執行条件
 	SymbolCode         string                  // 銘柄コード
-	Exchange           Exchange                // 市場
 	OrderQuantity      float64                 // 注文数量
 	ContractedQuantity float64                 // 約定数量
 	CanceledQuantity   float64                 // 取消数量
@@ -66,11 +60,19 @@ type StockOrder struct {
 	CanceledAt         time.Time               // 取消日時
 	Contracts          []*Contract             // 約定一覧
 	Message            string                  // メッセージ
+	ClosePositionCode  string                  // 返済するポジションのコード
 }
 
 // StockOrderRequest - 現物注文リクエスト
 type StockOrderRequest struct {
-	// TODO 要素
+	Side               Side                    // 売買方向
+	ExecutionCondition StockExecutionCondition // 株式執行条件
+	SymbolCode         string                  // 銘柄コード
+	Quantity           float64                 // 注文数量
+	LimitPrice         float64                 // 指値価格
+	ExpiredAt          time.Time               // 有効期限
+	StopCondition      *StockStopCondition     // 現物逆指値条件
+	ClosePositionCode  string                  // 返済するポジションのコード
 }
 
 // OrderResult - 注文結果
@@ -98,7 +100,6 @@ type StockPosition struct {
 	Code               string    // ポジションコード
 	OrderCode          string    // 注文コード
 	SymbolCode         string    // 銘柄コード
-	Exchange           Exchange  // 市場
 	Side               Side      // 売買方向
 	ContractedQuantity float64   // 約定数量
 	OwnedQuantity      float64   // 保有数量
@@ -120,5 +121,5 @@ type StockStopCondition struct {
 	ExecutionConditionAfterHit StockExecutionCondition // 逆指値発動後注文条件
 	LimitPriceAfterHit         float64                 // 逆指値発動後指値価格
 	ActivatedAt                time.Time               // 逆指値条件が満たされた日時
-	IsActivate                 bool
+	isActivate                 bool
 }

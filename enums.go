@@ -10,20 +10,6 @@ const (
 	ExchangeTypeFuture      ExchangeType = "future" // 先物
 )
 
-// Exchange - 市場
-type Exchange string
-
-const (
-	ExchangeUnspecified        Exchange = ""                     // 未指定
-	ExchangeToushou            Exchange = "toushou"              // 東証
-	ExchangeMeishou            Exchange = "meishou"              // 名証
-	ExchangeFukushou           Exchange = "fukushou"             // 福証
-	ExchangeSatsushou          Exchange = "satsushou"            // 札証
-	ExchangeFutureAllSession   Exchange = "future_all_session"   // 先物日通し
-	ExchangeFutureDaySession   Exchange = "future_day_session"   // 先物日中場
-	ExchangeFutureNightSession Exchange = "future_night_session" // 先物ナイトセッション
-)
-
 // OrderStatus - 注文状態
 type OrderStatus string
 
@@ -195,6 +181,28 @@ func (e StockExecutionCondition) IsContractableAfternoonSessionClosing() bool {
 	return false
 }
 
+func (e StockExecutionCondition) isValid() bool {
+	switch e {
+	case StockExecutionConditionMO,
+		StockExecutionConditionMOMO,
+		StockExecutionConditionMOAO,
+		StockExecutionConditionMOMC,
+		StockExecutionConditionMOAC,
+		StockExecutionConditionIOCMO,
+		StockExecutionConditionLO,
+		StockExecutionConditionLOMO,
+		StockExecutionConditionLOAO,
+		StockExecutionConditionLOMC,
+		StockExecutionConditionLOAC,
+		StockExecutionConditionIOCLO,
+		StockExecutionConditionFunariM,
+		StockExecutionConditionFunariA,
+		StockExecutionConditionStop:
+		return true
+	}
+	return false
+}
+
 // Side - 売買方向
 type Side string
 
@@ -203,6 +211,14 @@ const (
 	SideBuy         Side = "buy"  // 買い
 	SideSell        Side = "sell" // 売り
 )
+
+func (e Side) isValid() bool {
+	switch e {
+	case SideBuy, SideSell:
+		return true
+	}
+	return false
+}
 
 // Session - セッション
 type Session string

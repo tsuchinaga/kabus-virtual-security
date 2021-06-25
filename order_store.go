@@ -26,7 +26,7 @@ func getStockOrderStore() StockOrderStore {
 type StockOrderStore interface {
 	GetAll() []*stockOrder
 	GetByCode(code string) (*stockOrder, error)
-	Add(stockOrder *stockOrder)
+	Add(stockOrder *stockOrder) error
 	RemoveByCode(code string)
 }
 
@@ -66,11 +66,16 @@ func (s *stockOrderStore) GetByCode(code string) (*stockOrder, error) {
 }
 
 // Add - 注文をストアに追加する
-func (s *stockOrderStore) Add(stockOrder *stockOrder) {
+func (s *stockOrderStore) Add(stockOrder *stockOrder) error {
+	if stockOrder == nil {
+		return NilArgumentError
+	}
+
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
 	s.store[stockOrder.Code] = stockOrder
+	return nil
 }
 
 // RemoveByCode - コードを指定して削除する
