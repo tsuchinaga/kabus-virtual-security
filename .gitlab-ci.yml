@@ -1,0 +1,20 @@
+image: golang:1.16
+
+variables:
+  TZ: Asia/Tokyo
+
+stages:
+  - test
+  - deploy
+
+build-project:
+  stage: test
+  script:
+    - go build -v ./...
+
+test-project:
+  stage: test
+  script:
+    - go test ./... -cover -coverprofile=cover.out -covermode=atomic -v
+    - go tool cover -func=cover.out
+  coverage: '/^total:\s+\(statements\)\s+(\d+\.\d?%)\s*$/'
