@@ -16,4 +16,6 @@ var (
 	InvalidLimitPriceError         = errors.New("invalid limit price error")
 	InvalidExpiredError            = errors.New("invalid expired error")
 	InvalidStopConditionError      = errors.New("invalid stop condition error")
+	InvalidTimeError               = errors.New("invalid time error")
+	InvalidExchangeTypeError       = errors.New("invalid exchange type error")
 )

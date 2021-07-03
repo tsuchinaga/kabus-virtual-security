@@ -4,16 +4,31 @@ import (
 	"time"
 )
 
+// RegisterPriceRequest - 銘柄価格のリクエスト
+type RegisterPriceRequest struct {
+	ExchangeType ExchangeType // 市場種別
+	SymbolCode   string       // 銘柄コード
+	Price        float64      // 価格
+	PriceTime    time.Time    // 価格日時
+	Ask          float64      // 買気配値
+	AskTime      time.Time    // 買気配日時
+	Bid          float64      // 売気配値
+	BidTime      time.Time    // 売気配日時
+}
+
 // symbolPrice - 銘柄の価格
 type symbolPrice struct {
-	SymbolCode string    // 銘柄コード
-	Price      float64   // 価格
-	PriceTime  time.Time // 価格日時
-	Ask        float64   // 買気配値
-	AskTime    time.Time // 買気配日時
-	Bid        float64   // 売気配値
-	BidTime    time.Time // 売気配日時
-	kind       PriceKind // 種別
+	ExchangeType     ExchangeType // 市場種別
+	SymbolCode       string       // 銘柄コード
+	Price            float64      // 価格
+	PriceTime        time.Time    // 価格日時
+	Ask              float64      // 買気配値
+	AskTime          time.Time    // 買気配日時
+	Bid              float64      // 売気配値
+	BidTime          time.Time    // 売気配日時
+	kind             PriceKind    // 種別
+	session          Session      // セッション
+	priceBusinessDay time.Time    // 価格日時の営業日
 }
 
 func (e *symbolPrice) maxTime() time.Time {

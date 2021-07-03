@@ -5,17 +5,53 @@ import (
 )
 
 type Security interface {
-	RegisterPrice(symbolPrice symbolPrice) (*UpdatedOrders, error) // 銘柄価格の登録
-	StockOrder(order *StockOrderRequest) *OrderResult              // 現物注文
-	CancelStockOrder(cancelOrder *CancelOrderRequest) error        // 注文の取り消し
-	StockOrders() ([]*StockOrder, error)                           // 現物注文一覧
-	StockPositions() ([]*StockPosition, error)                     // 現物ポジション一覧
+	RegisterPrice(symbolPrice RegisterPriceRequest) error      // 銘柄価格の登録
+	StockOrder(order *StockOrderRequest) (*OrderResult, error) // 現物注文
+	CancelStockOrder(cancelOrder *CancelOrderRequest) error    // 注文の取り消し
+	StockOrders() ([]*StockOrder, error)                       // 現物注文一覧
+	StockPositions() ([]*StockPosition, error)                 // 現物ポジション一覧
 }
 
 type security struct {
 	clock        Clock
 	priceStore   PriceStore
+	priceService PriceService
 	stockService StockService
+}
+
+// RegisterPrice - 価格の登録
+func (s *security) RegisterPrice(symbolPrice RegisterPriceRequest) error {
+	if err := s.priceService.validation(symbolPrice); err != nil {
+		return err
+	}
+
+	// 内部用価格情報に変換
+	price, err := s.priceService.toSymbolPrice(symbolPrice)
+	if err != nil {
+		return err
+	}
+
+	// 保存
+	if err := s.priceStore.Set(price); err != nil {
+		return err
+	}
+
+	// 約定確認
+	now := s.clock.Now()
+	session := s.clock.GetStockSession(now) // priceのsessionと一致しないことがあるため現在時刻で取得する
+	for _, o := range s.stockService.GetStockOrders() {
+		res := o.confirmContract(price, now, session)
+		if res.isContracted {
+			switch o.Side {
+			case SideBuy:
+				_ = s.stockService.Entry(o, res)
+			case SideSell:
+				_ = s.stockService.Exit(o, res)
+			}
+		}
+	}
+
+	return nil
 }
 
 // StockOrder - 現物注文

@@ -421,3 +421,105 @@ func Test_Security_StockOrder(t *testing.T) {
 		})
 	}
 }
+
+func Test_security_RegisterPrice(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name           string
+		clock          *testClock
+		priceService   *testPriceService
+		priceStore     *testPriceStore
+		stockService   *testStockService
+		arg            RegisterPriceRequest
+		want           error
+		wantEntryCount int
+		wantExitCount  int
+	}{
+		{name: "validationでエラーがあればエラーを返す",
+			priceService: &testPriceService{validation1: InvalidTimeError},
+			stockService: &testStockService{},
+			want:         InvalidTimeError},
+		{name: "toSymbolPriceでエラーがあればエラーを返す",
+			priceService: &testPriceService{toSymbolPrice2: NilArgumentError},
+			stockService: &testStockService{},
+			want:         NilArgumentError},
+		{name: "storeへの保存でエラーがあればエラーを返す",
+			priceService: &testPriceService{toSymbolPrice1: &symbolPrice{}},
+			priceStore:   &testPriceStore{set: NilArgumentError},
+			stockService: &testStockService{},
+			want:         NilArgumentError},
+		{name: "保存された注文がなければ何もしない",
+			clock: &testClock{
+				now:             time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
+				getStockSession: SessionMorning},
+			priceService: &testPriceService{toSymbolPrice1: &symbolPrice{}},
+			priceStore:   &testPriceStore{},
+			stockService: &testStockService{getStockOrders: []*stockOrder{}},
+			want:         nil},
+		{name: "保存された注文があっても約定不可なら何もしない",
+			clock: &testClock{
+				now:             time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
+				getStockSession: SessionMorning},
+			priceService: &testPriceService{toSymbolPrice1: &symbolPrice{SymbolCode: "1234"}},
+			priceStore:   &testPriceStore{},
+			stockService: &testStockService{getStockOrders: []*stockOrder{{SymbolCode: "0000"}}},
+			want:         nil},
+		{name: "保存された注文が約定可能で買いならEntryを実行する",
+			clock: &testClock{
+				now:             time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
+				getStockSession: SessionMorning},
+			priceService: &testPriceService{toSymbolPrice1: &symbolPrice{
+				SymbolCode: "1234",
+				Price:      1000,
+				PriceTime:  time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
+				Bid:        1010,
+				BidTime:    time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
+				Ask:        990,
+				AskTime:    time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
+				kind:       PriceKindRegular}},
+			priceStore: &testPriceStore{},
+			stockService: &testStockService{getStockOrders: []*stockOrder{{
+				SymbolCode:         "1234",
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionMO,
+				OrderStatus:        OrderStatusInOrder}}},
+			wantEntryCount: 1},
+		{name: "保存された注文が約定可能で売りならExitを実行する",
+			clock: &testClock{
+				now:             time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
+				getStockSession: SessionMorning},
+			priceService: &testPriceService{toSymbolPrice1: &symbolPrice{
+				SymbolCode: "1234",
+				Price:      1000,
+				PriceTime:  time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
+				Bid:        1010,
+				BidTime:    time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
+				Ask:        990,
+				AskTime:    time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
+				kind:       PriceKindRegular}},
+			priceStore: &testPriceStore{},
+			stockService: &testStockService{getStockOrders: []*stockOrder{{
+				SymbolCode:         "1234",
+				Side:               SideSell,
+				ExecutionCondition: StockExecutionConditionMO,
+				OrderStatus:        OrderStatusInOrder}}},
+			wantExitCount: 1},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			security := &security{clock: test.clock, priceStore: test.priceStore, priceService: test.priceService, stockService: test.stockService}
+			got := security.RegisterPrice(test.arg)
+			if !errors.Is(got, test.want) ||
+				!reflect.DeepEqual(test.wantEntryCount, test.stockService.entryCount) ||
+				!reflect.DeepEqual(test.wantExitCount, test.stockService.exitCount) {
+
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want, test.wantEntryCount, test.wantExitCount,
+					got, test.stockService.entryCount, test.stockService.exitCount)
+			}
+		})
+	}
+}

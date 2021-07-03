@@ -31,12 +31,6 @@ var (
 	// 約定可能な後場引け時間
 	contractableAfternoonSessionCloseTime = newTimeRanges(
 		newTimeRange(15, 0, 0, 15, 0, 5))
-
-	// 株式の前場時間
-	stockMorningSessionTime = newTimeRange(9, 0, 0, 11, 30, 0)
-
-	// 株式の後場時間
-	stockAfternoonSessionTime = newTimeRange(12, 30, 0, 15, 0, 0)
 )
 
 func newTimeRanges(ranges ...*timeRange) *timeRanges {

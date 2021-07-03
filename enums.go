@@ -229,25 +229,15 @@ const (
 	SessionAfternoon   Session = "afternoon" // 後場
 )
 
-// Timing - タイミング
-type Timing string
-
-const (
-	TimingUnspecified Timing = ""            // 未指定
-	TimingPreOpening  Timing = "pre_opening" // プレオープニング
-	TimingOpening     Timing = "opening"     // 寄り
-	TimingRegular     Timing = "regular"     // ザラバ
-	TimingClosing     Timing = "closing"     // 引け
-)
-
 // PriceKind - 価格種別
 type PriceKind string
 
 const (
-	PriceKindUnspecified PriceKind = ""        // 未指定
-	PriceKindOpening     PriceKind = "opening" // 寄り
-	PriceKindRegular     PriceKind = "regular" // ザラバ
-	PriceKindClosing     PriceKind = "closing" // 引け
+	PriceKindUnspecified       PriceKind = ""                    // 未指定
+	PriceKindOpening           PriceKind = "opening"             // 寄り
+	PriceKindRegular           PriceKind = "regular"             // ザラバ
+	PriceKindClosing           PriceKind = "closing"             // 引け
+	PriceKindOpeningAndClosing PriceKind = "opening_and_closing" // 寄りでかつ引け
 )
 
 // ComparisonOperator - 比較演算子
