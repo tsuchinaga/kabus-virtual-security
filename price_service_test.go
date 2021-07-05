@@ -8,10 +8,18 @@ import (
 )
 
 type testPriceService struct {
-	validation1    error
-	toSymbolPrice1 *symbolPrice
-	toSymbolPrice2 error
+	getBySymbolCode1 *symbolPrice
+	getBySymbolCode2 error
+	set1             error
+	validation1      error
+	toSymbolPrice1   *symbolPrice
+	toSymbolPrice2   error
 }
+
+func (t *testPriceService) getBySymbolCode(string) (*symbolPrice, error) {
+	return t.getBySymbolCode1, t.getBySymbolCode2
+}
+func (t *testPriceService) set(*symbolPrice) error { return t.set1 }
 
 func (t *testPriceService) validation(RegisterPriceRequest) error { return t.validation1 }
 func (t *testPriceService) toSymbolPrice(RegisterPriceRequest) (*symbolPrice, error) {
@@ -332,6 +340,66 @@ func Test_priceService_toSymbolPrice(t *testing.T) {
 			got1, got2 := service.toSymbolPrice(test.arg)
 			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
+			}
+		})
+	}
+}
+
+func Test_priceService_getBySymbolCode(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		store PriceStore
+		arg   string
+		want1 *symbolPrice
+		want2 error
+	}{
+		{name: "storeがerrを返したらserviceもerrを返す",
+			arg:   "1234",
+			store: &testPriceStore{getBySymbolCode1: nil, getBySymbolCode2: NoDataError},
+			want1: nil,
+			want2: NoDataError},
+		{name: "storeがsymbolPriceを返したらserviceもsymbolPriceを返す",
+			arg:   "1234",
+			store: &testPriceStore{getBySymbolCode1: &symbolPrice{SymbolCode: "1234"}},
+			want1: &symbolPrice{SymbolCode: "1234"},
+			want2: nil},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &priceService{priceStore: test.store}
+			got1, got2 := service.getBySymbolCode(test.arg)
+			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
+			}
+		})
+	}
+}
+
+func Test_priceService_set(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		store PriceStore
+		arg   *symbolPrice
+		want  error
+	}{
+		{name: "storeからerrがあればそのerrを返す", store: &testPriceStore{set: NilArgumentError}, arg: nil, want: NilArgumentError},
+		{name: "storeからerrがなければnilを返す",
+			store: &testPriceStore{set: nil}, arg: &symbolPrice{SymbolCode: "1234"}, want: nil},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &priceService{priceStore: test.store}
+			got := service.set(test.arg)
+			if !errors.Is(got, test.want) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
 		})
 	}

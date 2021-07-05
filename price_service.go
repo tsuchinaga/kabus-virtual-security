@@ -1,6 +1,8 @@
 package virtual_security
 
 type PriceService interface {
+	getBySymbolCode(code string) (*symbolPrice, error)
+	set(price *symbolPrice) error
 	validation(price RegisterPriceRequest) error
 	toSymbolPrice(symbolPrice RegisterPriceRequest) (*symbolPrice, error)
 }
@@ -8,6 +10,14 @@ type PriceService interface {
 type priceService struct {
 	clock      Clock
 	priceStore PriceStore
+}
+
+func (s *priceService) getBySymbolCode(code string) (*symbolPrice, error) {
+	return s.priceStore.GetBySymbolCode(code)
+}
+
+func (s *priceService) set(price *symbolPrice) error {
+	return s.priceStore.Set(price)
 }
 
 func (s *priceService) validation(price RegisterPriceRequest) error {

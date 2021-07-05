@@ -7,23 +7,23 @@ import (
 	"time"
 )
 
-func Test_security_StockOrders(t *testing.T) {
+func Test_virtualSecurity_StockOrders(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		security security
+		security virtualSecurity
 		want1    []*StockOrder
 		want2    error
 	}{
 		{name: "storeに注文がなければ空配列",
-			security: security{
+			security: virtualSecurity{
 				clock:        &testClock{now: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
 				stockService: &testStockService{getStockOrders: []*stockOrder{}},
 			},
 			want1: []*StockOrder{},
 			want2: nil},
 		{name: "storeにある注文をStockOrderに入れ替えて返す",
-			security: security{
+			security: virtualSecurity{
 				clock: &testClock{now: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
 				stockService: &testStockService{getStockOrders: []*stockOrder{
 					{
@@ -69,7 +69,7 @@ func Test_security_StockOrders(t *testing.T) {
 			},
 			want2: nil},
 		{name: "storeに複数注文があれば全部返す",
-			security: security{
+			security: virtualSecurity{
 				clock: &testClock{now: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
 				stockService: &testStockService{getStockOrders: []*stockOrder{
 					{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
@@ -84,7 +84,7 @@ func Test_security_StockOrders(t *testing.T) {
 			},
 			want2: nil},
 		{name: "storeにある注文が死んだ注文なら返さない",
-			security: security{
+			security: virtualSecurity{
 				clock: &testClock{now: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
 				stockService: &testStockService{getStockOrders: []*stockOrder{
 					{Code: "sor_1234", OrderStatus: OrderStatusDone},
@@ -110,22 +110,22 @@ func Test_security_StockOrders(t *testing.T) {
 	}
 }
 
-func Test_security_StockPositions(t *testing.T) {
+func Test_virtualSecurity_StockPositions(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		security security
+		security virtualSecurity
 		want1    []*StockPosition
 		want2    error
 	}{
 		{name: "storeにデータが無ければ空配列を返す",
-			security: security{stockService: &testStockService{
+			security: virtualSecurity{stockService: &testStockService{
 				getStockPositions: []*stockPosition{},
 			}},
 			want1: []*StockPosition{},
 			want2: nil},
 		{name: "storeにあるデータをStockPositionに詰め替えて返す",
-			security: security{stockService: &testStockService{
+			security: virtualSecurity{stockService: &testStockService{
 				getStockPositions: []*stockPosition{
 					{
 						Code:               "spo_1234",
@@ -153,7 +153,7 @@ func Test_security_StockPositions(t *testing.T) {
 			},
 			want2: nil},
 		{name: "storeに複数データがあれば全部返す",
-			security: security{stockService: &testStockService{
+			security: virtualSecurity{stockService: &testStockService{
 				getStockPositions: []*stockPosition{
 					{Code: "spo_1234", OwnedQuantity: 100},
 					{Code: "spo_2345", OwnedQuantity: 100},
@@ -167,7 +167,7 @@ func Test_security_StockPositions(t *testing.T) {
 			},
 			want2: nil},
 		{name: "storeのデータが死んでいたら返さない",
-			security: security{stockService: &testStockService{
+			security: virtualSecurity{stockService: &testStockService{
 				getStockPositions: []*stockPosition{
 					{Code: "spo_1234", OwnedQuantity: 0},
 					{Code: "spo_2345", OwnedQuantity: 100},
@@ -192,16 +192,16 @@ func Test_security_StockPositions(t *testing.T) {
 	}
 }
 
-func Test_security_CancelStockOrder(t *testing.T) {
+func Test_virtualSecurity_CancelStockOrder(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
-		security *security
+		security *virtualSecurity
 		arg      *CancelOrderRequest
 		want     error
 	}{
 		{name: "注文がなければstoreからエラーが返されるので、そのエラーかラップしたエラーを返す",
-			security: &security{
+			security: &virtualSecurity{
 				clock: &testClock{now: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
 				stockService: &testStockService{
 					getStockOrderByCode1: nil,
@@ -210,13 +210,13 @@ func Test_security_CancelStockOrder(t *testing.T) {
 			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
 			want: NoDataError},
 		{name: "引数がnilならエラー",
-			security: &security{
+			security: &virtualSecurity{
 				clock:        &testClock{now: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
 				stockService: &testStockService{}},
 			arg:  nil,
 			want: NilArgumentError},
 		{name: "キャンセル不可な状態の注文ならエラー",
-			security: &security{
+			security: &virtualSecurity{
 				clock: &testClock{now: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
 				stockService: &testStockService{
 					getStockOrderByCode1: &stockOrder{Code: "sor_1234", OrderStatus: OrderStatusCanceled},
@@ -225,7 +225,7 @@ func Test_security_CancelStockOrder(t *testing.T) {
 			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
 			want: UncancellableOrderError},
 		{name: "キャンセル可能な注文ならエラーなし",
-			security: &security{
+			security: &virtualSecurity{
 				clock: &testClock{now: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
 				stockService: &testStockService{
 					getStockOrderByCode1: &stockOrder{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
@@ -247,12 +247,12 @@ func Test_security_CancelStockOrder(t *testing.T) {
 	}
 }
 
-func Test_Security_StockOrder(t *testing.T) {
+func Test_virtualSecurity_StockOrder(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name           string
 		clock          *testClock
-		priceStore     *testPriceStore
+		priceService   *testPriceService
 		stockService   *testStockService
 		arg            *StockOrderRequest
 		want1          *OrderResult
@@ -268,7 +268,7 @@ func Test_Security_StockOrder(t *testing.T) {
 			want1:        nil, want2: InvalidSideError},
 		{name: "該当銘柄の価格情報を取得し、価格情報がなくエラーが返されたらエラーを返す",
 			clock:        &testClock{now: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local)},
-			priceStore:   &testPriceStore{getBySymbolCode1: nil, getBySymbolCode2: InvalidSymbolCodeError},
+			priceService: &testPriceService{getBySymbolCode1: nil, getBySymbolCode2: InvalidSymbolCodeError},
 			stockService: &testStockService{newOrderCode: []string{"sor-1"}, addStockOrder: nil, addStockOrderHistory: []*stockOrder{}},
 			arg: &StockOrderRequest{
 				Side:               SideBuy,
@@ -281,7 +281,7 @@ func Test_Security_StockOrder(t *testing.T) {
 			want2: InvalidSymbolCodeError},
 		{name: "該当銘柄の価格情報を取得し、価格情報がなければ、注文の保存を行ない、注文結果を返す",
 			clock:        &testClock{now: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local)},
-			priceStore:   &testPriceStore{getBySymbolCode1: nil, getBySymbolCode2: NoDataError},
+			priceService: &testPriceService{getBySymbolCode1: nil, getBySymbolCode2: NoDataError},
 			stockService: &testStockService{newOrderCode: []string{"sor-1"}, addStockOrder: nil, addStockOrderHistory: []*stockOrder{}},
 			arg: &StockOrderRequest{
 				Side:               SideBuy,
@@ -294,7 +294,7 @@ func Test_Security_StockOrder(t *testing.T) {
 			want2: nil},
 		{name: "該当銘柄の価格情報を取得し、価格情報がない場合の注文の保存でエラーがあれば、エラーを返す",
 			clock:        &testClock{now: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local)},
-			priceStore:   &testPriceStore{getBySymbolCode1: nil, getBySymbolCode2: NoDataError},
+			priceService: &testPriceService{getBySymbolCode1: nil, getBySymbolCode2: NoDataError},
 			stockService: &testStockService{newOrderCode: []string{"sor-1"}, addStockOrder: NilArgumentError, addStockOrderHistory: []*stockOrder{}},
 			arg: &StockOrderRequest{
 				Side:               SideBuy,
@@ -307,7 +307,7 @@ func Test_Security_StockOrder(t *testing.T) {
 			want2: NilArgumentError},
 		{name: "該当銘柄の価格情報を取得し、価格情報で約定しない場合は注文の保存を行い、注文結果を返す",
 			clock:        &testClock{now: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local), getStockSession: SessionUnspecified},
-			priceStore:   &testPriceStore{getBySymbolCode1: &symbolPrice{Price: 1000}, getBySymbolCode2: nil},
+			priceService: &testPriceService{getBySymbolCode1: &symbolPrice{Price: 1000}, getBySymbolCode2: nil},
 			stockService: &testStockService{newOrderCode: []string{"sor-1"}, addStockOrder: NilArgumentError, addStockOrderHistory: []*stockOrder{}},
 			arg: &StockOrderRequest{
 				Side:               SideBuy,
@@ -320,7 +320,7 @@ func Test_Security_StockOrder(t *testing.T) {
 			want2: nil},
 		{name: "該当銘柄の価格情報を取得し、価格情報で買い注文が約定した場合はエントリーし、注文結果を返す",
 			clock: &testClock{now: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local), getStockSession: SessionMorning},
-			priceStore: &testPriceStore{getBySymbolCode1: &symbolPrice{
+			priceService: &testPriceService{getBySymbolCode1: &symbolPrice{
 				SymbolCode: "1234",
 				Ask:        1000,
 				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
@@ -341,7 +341,7 @@ func Test_Security_StockOrder(t *testing.T) {
 			wantEntryCount: 1},
 		{name: "該当銘柄の価格情報を取得し、価格情報で買い注文が約定できずエラーが返されたら、エラーを返す",
 			clock: &testClock{now: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local), getStockSession: SessionMorning},
-			priceStore: &testPriceStore{getBySymbolCode1: &symbolPrice{
+			priceService: &testPriceService{getBySymbolCode1: &symbolPrice{
 				SymbolCode: "1234",
 				Ask:        1000,
 				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
@@ -362,7 +362,7 @@ func Test_Security_StockOrder(t *testing.T) {
 			wantEntryCount: 1},
 		{name: "該当銘柄の価格情報を取得し、価格情報で売り注文が約定した場合はエグジットし、注文結果を返す",
 			clock: &testClock{now: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local), getStockSession: SessionMorning},
-			priceStore: &testPriceStore{getBySymbolCode1: &symbolPrice{
+			priceService: &testPriceService{getBySymbolCode1: &symbolPrice{
 				SymbolCode: "1234",
 				Ask:        1000,
 				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
@@ -383,7 +383,7 @@ func Test_Security_StockOrder(t *testing.T) {
 			wantExitCount: 1},
 		{name: "該当銘柄の価格情報を取得し、価格情報で売り注文が約定できずエラーが返されたら、エラーを返す",
 			clock: &testClock{now: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local), getStockSession: SessionMorning},
-			priceStore: &testPriceStore{getBySymbolCode1: &symbolPrice{
+			priceService: &testPriceService{getBySymbolCode1: &symbolPrice{
 				SymbolCode: "1234",
 				Ask:        1000,
 				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
@@ -408,7 +408,7 @@ func Test_Security_StockOrder(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			security := &security{clock: test.clock, priceStore: test.priceStore, stockService: test.stockService}
+			security := &virtualSecurity{clock: test.clock, stockService: test.stockService, priceService: test.priceService}
 			got1, got2 := security.StockOrder(test.arg)
 			if !reflect.DeepEqual(test.want1, got1) ||
 				!errors.Is(got2, test.want2) ||
@@ -422,13 +422,12 @@ func Test_Security_StockOrder(t *testing.T) {
 	}
 }
 
-func Test_security_RegisterPrice(t *testing.T) {
+func Test_virtualSecurity_RegisterPrice(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name           string
 		clock          *testClock
 		priceService   *testPriceService
-		priceStore     *testPriceStore
 		stockService   *testStockService
 		arg            RegisterPriceRequest
 		want           error
@@ -444,8 +443,7 @@ func Test_security_RegisterPrice(t *testing.T) {
 			stockService: &testStockService{},
 			want:         NilArgumentError},
 		{name: "storeへの保存でエラーがあればエラーを返す",
-			priceService: &testPriceService{toSymbolPrice1: &symbolPrice{}},
-			priceStore:   &testPriceStore{set: NilArgumentError},
+			priceService: &testPriceService{toSymbolPrice1: &symbolPrice{}, set1: NilArgumentError},
 			stockService: &testStockService{},
 			want:         NilArgumentError},
 		{name: "保存された注文がなければ何もしない",
@@ -453,7 +451,6 @@ func Test_security_RegisterPrice(t *testing.T) {
 				now:             time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
 				getStockSession: SessionMorning},
 			priceService: &testPriceService{toSymbolPrice1: &symbolPrice{}},
-			priceStore:   &testPriceStore{},
 			stockService: &testStockService{getStockOrders: []*stockOrder{}},
 			want:         nil},
 		{name: "保存された注文があっても約定不可なら何もしない",
@@ -461,7 +458,6 @@ func Test_security_RegisterPrice(t *testing.T) {
 				now:             time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
 				getStockSession: SessionMorning},
 			priceService: &testPriceService{toSymbolPrice1: &symbolPrice{SymbolCode: "1234"}},
-			priceStore:   &testPriceStore{},
 			stockService: &testStockService{getStockOrders: []*stockOrder{{SymbolCode: "0000"}}},
 			want:         nil},
 		{name: "保存された注文が約定可能で買いならEntryを実行する",
@@ -477,7 +473,6 @@ func Test_security_RegisterPrice(t *testing.T) {
 				Ask:        990,
 				AskTime:    time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular}},
-			priceStore: &testPriceStore{},
 			stockService: &testStockService{getStockOrders: []*stockOrder{{
 				SymbolCode:         "1234",
 				Side:               SideBuy,
@@ -497,7 +492,6 @@ func Test_security_RegisterPrice(t *testing.T) {
 				Ask:        990,
 				AskTime:    time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular}},
-			priceStore: &testPriceStore{},
 			stockService: &testStockService{getStockOrders: []*stockOrder{{
 				SymbolCode:         "1234",
 				Side:               SideSell,
@@ -510,7 +504,7 @@ func Test_security_RegisterPrice(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			security := &security{clock: test.clock, priceStore: test.priceStore, priceService: test.priceService, stockService: test.stockService}
+			security := &virtualSecurity{clock: test.clock, priceService: test.priceService, stockService: test.stockService}
 			got := security.RegisterPrice(test.arg)
 			if !errors.Is(got, test.want) ||
 				!reflect.DeepEqual(test.wantEntryCount, test.stockService.entryCount) ||

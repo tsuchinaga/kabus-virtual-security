@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-type Security interface {
+type VirtualSecurity interface {
 	RegisterPrice(symbolPrice RegisterPriceRequest) error      // 銘柄価格の登録
 	StockOrder(order *StockOrderRequest) (*OrderResult, error) // 現物注文
 	CancelStockOrder(cancelOrder *CancelOrderRequest) error    // 注文の取り消し
@@ -12,15 +12,14 @@ type Security interface {
 	StockPositions() ([]*StockPosition, error)                 // 現物ポジション一覧
 }
 
-type security struct {
+type virtualSecurity struct {
 	clock        Clock
-	priceStore   PriceStore
 	priceService PriceService
 	stockService StockService
 }
 
 // RegisterPrice - 価格の登録
-func (s *security) RegisterPrice(symbolPrice RegisterPriceRequest) error {
+func (s *virtualSecurity) RegisterPrice(symbolPrice RegisterPriceRequest) error {
 	if err := s.priceService.validation(symbolPrice); err != nil {
 		return err
 	}
@@ -32,7 +31,7 @@ func (s *security) RegisterPrice(symbolPrice RegisterPriceRequest) error {
 	}
 
 	// 保存
-	if err := s.priceStore.Set(price); err != nil {
+	if err := s.priceService.set(price); err != nil {
 		return err
 	}
 
@@ -55,7 +54,7 @@ func (s *security) RegisterPrice(symbolPrice RegisterPriceRequest) error {
 }
 
 // StockOrder - 現物注文
-func (s *security) StockOrder(order *StockOrderRequest) (*OrderResult, error) {
+func (s *virtualSecurity) StockOrder(order *StockOrderRequest) (*OrderResult, error) {
 	if order == nil {
 		return nil, NilArgumentError
 	}
@@ -83,7 +82,7 @@ func (s *security) StockOrder(order *StockOrderRequest) (*OrderResult, error) {
 	}
 
 	// 該当銘柄の価格取得
-	price, err := s.priceStore.GetBySymbolCode(order.SymbolCode)
+	price, err := s.priceService.getBySymbolCode(order.SymbolCode)
 	if err == nil {
 		// 価格があれば約定確認
 		// sessionを特定する
@@ -116,7 +115,7 @@ func (s *security) StockOrder(order *StockOrderRequest) (*OrderResult, error) {
 }
 
 // CancelStockOrder - 現物注文の取消
-func (s *security) CancelStockOrder(cancelOrder *CancelOrderRequest) error {
+func (s *virtualSecurity) CancelStockOrder(cancelOrder *CancelOrderRequest) error {
 	if cancelOrder == nil {
 		return fmt.Errorf("cancelOrder is nil, %w", NilArgumentError)
 	}
@@ -135,7 +134,7 @@ func (s *security) CancelStockOrder(cancelOrder *CancelOrderRequest) error {
 }
 
 // StockOrders - 現物注文一覧
-func (s *security) StockOrders() ([]*StockOrder, error) {
+func (s *virtualSecurity) StockOrders() ([]*StockOrder, error) {
 	now := s.clock.Now()
 	orders := s.stockService.GetStockOrders()
 
@@ -171,7 +170,7 @@ func (s *security) StockOrders() ([]*StockOrder, error) {
 }
 
 // StockPositions - 現物ポジション一覧
-func (s *security) StockPositions() ([]*StockPosition, error) {
+func (s *virtualSecurity) StockPositions() ([]*StockPosition, error) {
 	positions := s.stockService.GetStockPositions()
 
 	res := make([]*StockPosition, len(positions))
