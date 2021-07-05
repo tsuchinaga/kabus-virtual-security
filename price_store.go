@@ -6,12 +6,12 @@ import (
 )
 
 var (
-	priceStoreSingleton      PriceStore
+	priceStoreSingleton      iPriceStore
 	priceStoreSingletonMutex sync.Mutex
 )
 
 // getPriceStore - 価格ストアの取得
-func getPriceStore(clock Clock) PriceStore {
+func getPriceStore(clock iClock) iPriceStore {
 	priceStoreSingletonMutex.Lock()
 	defer priceStoreSingletonMutex.Unlock()
 
@@ -20,22 +20,22 @@ func getPriceStore(clock Clock) PriceStore {
 			store: map[string]*symbolPrice{},
 			clock: clock,
 		}
-		store.setCalculatedExpireTime(clock.Now())
+		store.setCalculatedExpireTime(clock.now())
 		priceStoreSingleton = store
 	}
 	return priceStoreSingleton
 }
 
-// PriceStore - 価格ストアのインターフェース
-type PriceStore interface {
-	GetBySymbolCode(symbolCode string) (*symbolPrice, error)
-	Set(price *symbolPrice) error
+// iPriceStore - 価格ストアのインターフェース
+type iPriceStore interface {
+	getBySymbolCode(symbolCode string) (*symbolPrice, error)
+	set(price *symbolPrice) error
 }
 
 // priceStore - 価格ストア
 type priceStore struct {
 	store      map[string]*symbolPrice
-	clock      Clock
+	clock      iClock
 	expireTime time.Time
 	mtx        sync.Mutex
 }
@@ -52,9 +52,9 @@ func (s *priceStore) setCalculatedExpireTime(now time.Time) {
 }
 
 // GetBySymbolCode - ストアから指定した銘柄コードの価格を取り出す
-func (s *priceStore) GetBySymbolCode(symbolCode string) (*symbolPrice, error) {
+func (s *priceStore) getBySymbolCode(symbolCode string) (*symbolPrice, error) {
 	if price, ok := s.store[symbolCode]; ok {
-		if s.isExpired(s.clock.Now()) {
+		if s.isExpired(s.clock.now()) {
 			return nil, ExpiredDataError
 		}
 		return price, nil
@@ -64,7 +64,7 @@ func (s *priceStore) GetBySymbolCode(symbolCode string) (*symbolPrice, error) {
 }
 
 // Set - ストアに銘柄の価格情報を登録する
-func (s *priceStore) Set(price *symbolPrice) error {
+func (s *priceStore) set(price *symbolPrice) error {
 	if price == nil {
 		return NilArgumentError
 	}
@@ -79,7 +79,7 @@ func (s *priceStore) Set(price *symbolPrice) error {
 
 	// storeの有効期限が切れていたら初期化
 	//   有効期限は次の8時まで
-	now := s.clock.Now()
+	now := s.clock.now()
 	if s.isExpired(now) {
 		s.store = map[string]*symbolPrice{}
 		s.setCalculatedExpireTime(now)

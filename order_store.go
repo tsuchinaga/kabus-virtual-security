@@ -6,11 +6,11 @@ import (
 )
 
 var (
-	stockOrderStoreSingleton      StockOrderStore
+	stockOrderStoreSingleton      iStockOrderStore
 	stockOrderStoreSingletonMutex sync.Mutex
 )
 
-func getStockOrderStore() StockOrderStore {
+func getStockOrderStore() iStockOrderStore {
 	stockOrderStoreSingletonMutex.Lock()
 	defer stockOrderStoreSingletonMutex.Unlock()
 
@@ -22,12 +22,12 @@ func getStockOrderStore() StockOrderStore {
 	return stockOrderStoreSingleton
 }
 
-// StockOrderStore - 現物株式注文ストアのインターフェース
-type StockOrderStore interface {
-	GetAll() []*stockOrder
-	GetByCode(code string) (*stockOrder, error)
-	Add(stockOrder *stockOrder) error
-	RemoveByCode(code string)
+// iStockOrderStore - 現物株式注文ストアのインターフェース
+type iStockOrderStore interface {
+	getAll() []*stockOrder
+	getByCode(code string) (*stockOrder, error)
+	add(stockOrder *stockOrder) error
+	removeByCode(code string)
 }
 
 // stockOrderStore - 現物株式注文のストア
@@ -36,8 +36,8 @@ type stockOrderStore struct {
 	mtx   sync.Mutex
 }
 
-// GetAll - ストアのすべての注文をコード順に並べて返す
-func (s *stockOrderStore) GetAll() []*stockOrder {
+// getAll - ストアのすべての注文をコード順に並べて返す
+func (s *stockOrderStore) getAll() []*stockOrder {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
@@ -53,8 +53,8 @@ func (s *stockOrderStore) GetAll() []*stockOrder {
 	return orders
 }
 
-// GetByCode - コードを指定してデータを取得する
-func (s *stockOrderStore) GetByCode(code string) (*stockOrder, error) {
+// getByCode - コードを指定してデータを取得する
+func (s *stockOrderStore) getByCode(code string) (*stockOrder, error) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
@@ -65,8 +65,8 @@ func (s *stockOrderStore) GetByCode(code string) (*stockOrder, error) {
 	}
 }
 
-// Add - 注文をストアに追加する
-func (s *stockOrderStore) Add(stockOrder *stockOrder) error {
+// add - 注文をストアに追加する
+func (s *stockOrderStore) add(stockOrder *stockOrder) error {
 	if stockOrder == nil {
 		return NilArgumentError
 	}
@@ -78,8 +78,8 @@ func (s *stockOrderStore) Add(stockOrder *stockOrder) error {
 	return nil
 }
 
-// RemoveByCode - コードを指定して削除する
-func (s *stockOrderStore) RemoveByCode(code string) {
+// removeByCode - コードを指定して削除する
+func (s *stockOrderStore) removeByCode(code string) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 

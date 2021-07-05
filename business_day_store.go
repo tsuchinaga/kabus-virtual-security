@@ -9,11 +9,11 @@ import (
 )
 
 var (
-	businessDayStoreSingleton    BusinessDayStore
+	businessDayStoreSingleton    iBusinessDayStore
 	businessDayStoreSingletonMtx sync.Mutex
 )
 
-func getBusinessDayStore(clock Clock) BusinessDayStore {
+func getBusinessDayStore(clock iClock) iBusinessDayStore {
 	businessDayStoreSingletonMtx.Lock()
 	defer businessDayStoreSingletonMtx.Unlock()
 
@@ -27,18 +27,18 @@ func getBusinessDayStore(clock Clock) BusinessDayStore {
 	return businessDayStoreSingleton
 }
 
-type BusinessDayStore interface {
-	IsBusinessDay(target time.Time) (bool, error)
+type iBusinessDayStore interface {
+	isBusinessDay(target time.Time) (bool, error)
 }
 
 type businessDayStore struct {
-	clock       Clock
+	clock       iClock
 	businessDay jbd.BusinessDay
 	refreshedAt time.Time
 }
 
-func (s *businessDayStore) IsBusinessDay(target time.Time) (bool, error) {
-	now := s.clock.Now()
+func (s *businessDayStore) isBusinessDay(target time.Time) (bool, error) {
+	now := s.clock.now()
 	nowDate := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 	if s.refreshedAt.IsZero() || s.refreshedAt.Before(nowDate) || s.businessDay.LastUpdateDate().IsZero() {
 		if err := s.businessDay.Refresh(context.Background()); err != nil {

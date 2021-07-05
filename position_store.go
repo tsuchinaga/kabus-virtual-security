@@ -6,11 +6,11 @@ import (
 )
 
 var (
-	stockPositionStoreSingleton      StockPositionStore
+	stockPositionStoreSingleton      iStockPositionStore
 	stockPositionStoreSingletonMutex sync.Mutex
 )
 
-func getStockPositionStore() StockPositionStore {
+func getStockPositionStore() iStockPositionStore {
 	stockPositionStoreSingletonMutex.Lock()
 	defer stockPositionStoreSingletonMutex.Unlock()
 
@@ -22,12 +22,12 @@ func getStockPositionStore() StockPositionStore {
 	return stockPositionStoreSingleton
 }
 
-// StockPositionStore - 現物株式ポジションストアのインターフェース
-type StockPositionStore interface {
-	GetAll() []*stockPosition
-	GetByCode(code string) (*stockPosition, error)
-	Add(stockPosition *stockPosition)
-	RemoveByCode(code string)
+// iStockPositionStore - 現物株式ポジションストアのインターフェース
+type iStockPositionStore interface {
+	getAll() []*stockPosition
+	getByCode(code string) (*stockPosition, error)
+	add(stockPosition *stockPosition)
+	removeByCode(code string)
 }
 
 // stockPositionStore - 現物株式ポジションのストア
@@ -37,7 +37,7 @@ type stockPositionStore struct {
 }
 
 // GetAll - ストアのすべてのポジションをコード順に並べて返す
-func (s *stockPositionStore) GetAll() []*stockPosition {
+func (s *stockPositionStore) getAll() []*stockPosition {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
@@ -54,7 +54,7 @@ func (s *stockPositionStore) GetAll() []*stockPosition {
 }
 
 // GetByCode - コードを指定してデータを取得する
-func (s *stockPositionStore) GetByCode(code string) (*stockPosition, error) {
+func (s *stockPositionStore) getByCode(code string) (*stockPosition, error) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
@@ -66,7 +66,7 @@ func (s *stockPositionStore) GetByCode(code string) (*stockPosition, error) {
 }
 
 // Add - ポジションをストアに追加する
-func (s *stockPositionStore) Add(stockPosition *stockPosition) {
+func (s *stockPositionStore) add(stockPosition *stockPosition) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
@@ -74,7 +74,7 @@ func (s *stockPositionStore) Add(stockPosition *stockPosition) {
 }
 
 // RemoveByCode - コードを指定して削除する
-func (s *stockPositionStore) RemoveByCode(code string) {
+func (s *stockPositionStore) removeByCode(code string) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 

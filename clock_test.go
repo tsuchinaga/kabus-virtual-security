@@ -7,21 +7,21 @@ import (
 )
 
 type testClock struct {
-	Clock
-	now                    time.Time
-	getStockSession        Session
+	iClock
+	now1                   time.Time
+	getStockSession1       Session
 	getStockSessionHistory []time.Time
-	getSession             Session
-	getBusinessDay         time.Time
+	getSession1            Session
+	getBusinessDay1        time.Time
 }
 
-func (t *testClock) Now() time.Time { return t.now }
-func (t *testClock) GetStockSession(now time.Time) Session {
+func (t *testClock) now() time.Time { return t.now1 }
+func (t *testClock) getStockSession(now time.Time) Session {
 	t.getStockSessionHistory = append(t.getStockSessionHistory, now)
-	return t.getStockSession
+	return t.getStockSession1
 }
-func (t *testClock) GetSession(ExchangeType, time.Time) Session       { return t.getSession }
-func (t *testClock) GetBusinessDay(ExchangeType, time.Time) time.Time { return t.getBusinessDay }
+func (t *testClock) getSession(ExchangeType, time.Time) Session       { return t.getSession1 }
+func (t *testClock) getBusinessDay(ExchangeType, time.Time) time.Time { return t.getBusinessDay1 }
 
 func Test_newClock(t *testing.T) {
 	want := &clock{}
@@ -34,7 +34,7 @@ func Test_newClock(t *testing.T) {
 
 func Test_clock_Now1(t *testing.T) {
 	want := time.Now()
-	got := (&clock{}).Now()
+	got := (&clock{}).now()
 
 	t.Parallel()
 	if got.Before(want) {
@@ -43,7 +43,7 @@ func Test_clock_Now1(t *testing.T) {
 }
 
 func Test_clock_Now2(t *testing.T) {
-	got := (&clock{}).Now()
+	got := (&clock{}).now()
 	want := time.Now()
 
 	t.Parallel()
@@ -77,7 +77,7 @@ func Test_clock_GetStockSession(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			clock := &clock{}
-			got := clock.GetStockSession(test.arg)
+			got := clock.getStockSession(test.arg)
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
@@ -113,7 +113,7 @@ func Test_clock_GetBusinessDay(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			c := &clock{}
-			got := c.GetBusinessDay(test.arg1, test.arg2)
+			got := c.getBusinessDay(test.arg1, test.arg2)
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
@@ -168,7 +168,7 @@ func Test_clock_GetSession(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			clock := &clock{}
-			got := clock.GetSession(test.arg1, test.arg2)
+			got := clock.getSession(test.arg1, test.arg2)
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}

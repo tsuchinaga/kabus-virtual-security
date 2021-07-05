@@ -2,31 +2,31 @@ package virtual_security
 
 import "sync"
 
-type StockService interface {
-	NewOrderCode() string
-	Entry(order *stockOrder, contractResult *confirmContractResult) error
-	Exit(order *stockOrder, contractResult *confirmContractResult) error
-	GetStockOrders() []*stockOrder
-	GetStockOrderByCode(orderCode string) (*stockOrder, error)
-	AddStockOrder(order *stockOrder) error
-	RemoveStockOrderByCode(orderCode string)
-	GetStockPositions() []*stockPosition
-	RemoveStockPositionByCode(positionCode string)
+type iStockService interface {
+	newOrderCode() string
+	entry(order *stockOrder, contractResult *confirmContractResult) error
+	exit(order *stockOrder, contractResult *confirmContractResult) error
+	getStockOrders() []*stockOrder
+	getStockOrderByCode(orderCode string) (*stockOrder, error)
+	addStockOrder(order *stockOrder) error
+	removeStockOrderByCode(orderCode string)
+	getStockPositions() []*stockPosition
+	removeStockPositionByCode(positionCode string)
 }
 
 type stockService struct {
-	uuidGenerator      UUIDGenerator
-	stockOrderStore    StockOrderStore
-	stockPositionStore StockPositionStore
+	uuidGenerator      iUUIDGenerator
+	stockOrderStore    iStockOrderStore
+	stockPositionStore iStockPositionStore
 }
 
-func (s *stockService) NewOrderCode() string {
-	return "sor-" + s.uuidGenerator.Generate()
+func (s *stockService) newOrderCode() string {
+	return "sor-" + s.uuidGenerator.generate()
 }
 
-func (s *stockService) Entry(order *stockOrder, contractResult *confirmContractResult) error {
-	contractCode := "con-" + s.uuidGenerator.Generate()
-	positionCode := "spo-" + s.uuidGenerator.Generate()
+func (s *stockService) entry(order *stockOrder, contractResult *confirmContractResult) error {
+	contractCode := "con-" + s.uuidGenerator.generate()
+	positionCode := "spo-" + s.uuidGenerator.generate()
 	order.contract(&Contract{
 		ContractCode: contractCode,
 		OrderCode:    order.Code,
@@ -36,7 +36,7 @@ func (s *stockService) Entry(order *stockOrder, contractResult *confirmContractR
 		ContractedAt: contractResult.contractedAt,
 	})
 
-	s.stockPositionStore.Add(&stockPosition{
+	s.stockPositionStore.add(&stockPosition{
 		Code:               positionCode,
 		OrderCode:          order.Code,
 		SymbolCode:         order.SymbolCode,
@@ -48,11 +48,11 @@ func (s *stockService) Entry(order *stockOrder, contractResult *confirmContractR
 	})
 
 	// storeに保存
-	return s.stockOrderStore.Add(order)
+	return s.stockOrderStore.add(order)
 }
 
-func (s *stockService) Exit(order *stockOrder, contractResult *confirmContractResult) error {
-	closePosition, err := s.stockPositionStore.GetByCode(order.ClosePositionCode)
+func (s *stockService) exit(order *stockOrder, contractResult *confirmContractResult) error {
+	closePosition, err := s.stockPositionStore.getByCode(order.ClosePositionCode)
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (s *stockService) Exit(order *stockOrder, contractResult *confirmContractRe
 	_ = closePosition.exit(order.OrderQuantity) // 直前でholdしていて確実にexitできるためerrは捨てられる
 
 	// 注文に約定情報を追加
-	contractCode := "con-" + s.uuidGenerator.Generate()
+	contractCode := "con-" + s.uuidGenerator.generate()
 	order.contract(&Contract{
 		ContractCode: contractCode,
 		OrderCode:    order.Code,
@@ -75,29 +75,29 @@ func (s *stockService) Exit(order *stockOrder, contractResult *confirmContractRe
 	})
 
 	// storeに保存
-	return s.stockOrderStore.Add(order)
+	return s.stockOrderStore.add(order)
 }
 
-func (s *stockService) GetStockOrders() []*stockOrder {
-	return s.stockOrderStore.GetAll()
+func (s *stockService) getStockOrders() []*stockOrder {
+	return s.stockOrderStore.getAll()
 }
 
-func (s *stockService) GetStockOrderByCode(orderCode string) (*stockOrder, error) {
-	return s.stockOrderStore.GetByCode(orderCode)
+func (s *stockService) getStockOrderByCode(orderCode string) (*stockOrder, error) {
+	return s.stockOrderStore.getByCode(orderCode)
 }
 
-func (s *stockService) AddStockOrder(order *stockOrder) error {
-	return s.stockOrderStore.Add(order)
+func (s *stockService) addStockOrder(order *stockOrder) error {
+	return s.stockOrderStore.add(order)
 }
 
-func (s *stockService) RemoveStockOrderByCode(orderCode string) {
-	s.stockOrderStore.RemoveByCode(orderCode)
+func (s *stockService) removeStockOrderByCode(orderCode string) {
+	s.stockOrderStore.removeByCode(orderCode)
 }
 
-func (s *stockService) GetStockPositions() []*stockPosition {
-	return s.stockPositionStore.GetAll()
+func (s *stockService) getStockPositions() []*stockPosition {
+	return s.stockPositionStore.getAll()
 }
 
-func (s *stockService) RemoveStockPositionByCode(positionCode string) {
-	s.stockPositionStore.RemoveByCode(positionCode)
+func (s *stockService) removeStockPositionByCode(positionCode string) {
+	s.stockPositionStore.removeByCode(positionCode)
 }

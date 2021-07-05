@@ -6,13 +6,13 @@ import (
 )
 
 type testUUIDGenerator struct {
-	i         int
-	generator []string
+	i          int
+	generator1 []string
 }
 
-func (t *testUUIDGenerator) Generate() string {
+func (t *testUUIDGenerator) generate() string {
 	defer func() { t.i++ }()
-	return t.generator[t.i%len(t.generator)]
+	return t.generator1[t.i%len(t.generator1)]
 }
 
 func Test_newUUIDGenerator(t *testing.T) {
@@ -29,7 +29,7 @@ func Test_uuidGenerator_Generate(t *testing.T) {
 	uuidGenerator := &uuidGenerator{}
 	uuids := make([]string, l)
 	for i := 0; i < l; i++ {
-		got := uuidGenerator.Generate()
+		got := uuidGenerator.generate()
 		for j := 0; j < i; j++ {
 			if got == uuids[j] {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), uuids, got)

@@ -2,16 +2,16 @@ package virtual_security
 
 import "github.com/google/uuid"
 
-func newUUIDGenerator() UUIDGenerator {
+func newUUIDGenerator() iUUIDGenerator {
 	return &uuidGenerator{}
 }
 
-type UUIDGenerator interface {
-	Generate() string
+type iUUIDGenerator interface {
+	generate() string
 }
 
 type uuidGenerator struct{}
 
-func (u *uuidGenerator) Generate() string {
+func (u *uuidGenerator) generate() string {
 	return uuid.NewString()
 }

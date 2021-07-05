@@ -7,28 +7,28 @@ import (
 )
 
 type testStockOrderStore struct {
-	getAll              []*stockOrder
+	getAll1             []*stockOrder
 	getByCode1          *stockOrder
 	getByCode2          error
 	getByCodeHistory    []string
-	add                 error
+	add1                error
 	addHistory          []*stockOrder
 	removeByCodeHistory []string
 }
 
-func (t *testStockOrderStore) GetAll() []*stockOrder { return t.getAll }
-func (t *testStockOrderStore) GetByCode(code string) (*stockOrder, error) {
+func (t *testStockOrderStore) getAll() []*stockOrder { return t.getAll1 }
+func (t *testStockOrderStore) getByCode(code string) (*stockOrder, error) {
 	t.getByCodeHistory = append(t.getByCodeHistory, code)
 	return t.getByCode1, t.getByCode2
 }
-func (t *testStockOrderStore) Add(order *stockOrder) error {
+func (t *testStockOrderStore) add(order *stockOrder) error {
 	if t.addHistory == nil {
 		t.addHistory = []*stockOrder{}
 	}
 	t.addHistory = append(t.addHistory, order)
-	return t.add
+	return t.add1
 }
-func (t *testStockOrderStore) RemoveByCode(code string) {
+func (t *testStockOrderStore) removeByCode(code string) {
 	if t.removeByCodeHistory == nil {
 		t.removeByCodeHistory = []string{}
 	}
@@ -67,7 +67,7 @@ func Test_stockOrderStore_GetAll(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got := test.store.GetAll()
+			got := test.store.getAll()
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
@@ -103,7 +103,7 @@ func Test_stockOrderStore_GetByCode(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got1, got2 := test.store.GetByCode(test.arg)
+			got1, got2 := test.store.getByCode(test.arg)
 			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
 			}
@@ -145,7 +145,7 @@ func Test_stockOrderStore_Add(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got := test.store.Add(test.arg)
+			got := test.store.add(test.arg)
 			if !errors.Is(got, test.want) || !reflect.DeepEqual(test.wantStore, test.store.store) {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want, test.wantStore, got, test.store.store)
 			}
@@ -175,7 +175,7 @@ func Test_stockOrderStore_RemoveByCode(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			test.store.RemoveByCode(test.arg)
+			test.store.removeByCode(test.arg)
 			got := test.store.store
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)

@@ -11,24 +11,24 @@ type testPriceStore struct {
 	getBySymbolCode1       *symbolPrice
 	getBySymbolCode2       error
 	getBySymbolCodeHistory []string
-	set                    error
+	set1                   error
 	setHistory             []*symbolPrice
 }
 
-func (t *testPriceStore) GetBySymbolCode(symbolCode string) (*symbolPrice, error) {
+func (t *testPriceStore) getBySymbolCode(symbolCode string) (*symbolPrice, error) {
 	t.getBySymbolCodeHistory = append(t.getBySymbolCodeHistory, symbolCode)
 	return t.getBySymbolCode1, t.getBySymbolCode2
 }
 
-func (t *testPriceStore) Set(price *symbolPrice) error {
+func (t *testPriceStore) set(price *symbolPrice) error {
 	t.setHistory = append(t.setHistory, price)
-	return t.set
+	return t.set1
 }
 
 func Test_getPriceStore(t *testing.T) {
 	t.Parallel()
 
-	clock := &testClock{now: time.Date(2021, 5, 22, 7, 11, 0, 0, time.Local)}
+	clock := &testClock{now1: time.Date(2021, 5, 22, 7, 11, 0, 0, time.Local)}
 	got := getPriceStore(clock)
 	want := &priceStore{
 		store:      map[string]*symbolPrice{},
@@ -121,7 +121,7 @@ func Test_priceStore_GetBySymbolCode(t *testing.T) {
 	}{
 		{name: "指定した銘柄が存在したらそれを返す",
 			priceStore: &priceStore{
-				clock:      &testClock{now: time.Date(2021, 5, 22, 7, 0, 0, 0, time.Local)},
+				clock:      &testClock{now1: time.Date(2021, 5, 22, 7, 0, 0, 0, time.Local)},
 				store:      map[string]*symbolPrice{"1234": {SymbolCode: "1234", Price: 100}, "2345": {SymbolCode: "2345", Price: 200}, "3456": {SymbolCode: "3456", Price: 300}},
 				expireTime: time.Date(2021, 5, 22, 8, 0, 0, 0, time.Local),
 			},
@@ -130,7 +130,7 @@ func Test_priceStore_GetBySymbolCode(t *testing.T) {
 			want2: nil},
 		{name: "指定した銘柄が存在しなければエラーを返す",
 			priceStore: &priceStore{
-				clock:      &testClock{now: time.Date(2021, 5, 22, 7, 0, 0, 0, time.Local)},
+				clock:      &testClock{now1: time.Date(2021, 5, 22, 7, 0, 0, 0, time.Local)},
 				store:      map[string]*symbolPrice{"1234": {SymbolCode: "1234", Price: 100}, "2345": {SymbolCode: "2345", Price: 200}, "3456": {SymbolCode: "3456", Price: 300}},
 				expireTime: time.Date(2021, 5, 22, 8, 0, 0, 0, time.Local),
 			},
@@ -139,7 +139,7 @@ func Test_priceStore_GetBySymbolCode(t *testing.T) {
 			want2: NoDataError},
 		{name: "指定した銘柄が存在しても、有効期限が切れていればstoreを空にして有効期限を更新し、エラーを返す",
 			priceStore: &priceStore{
-				clock:      &testClock{now: time.Date(2021, 5, 22, 8, 0, 0, 0, time.Local)},
+				clock:      &testClock{now1: time.Date(2021, 5, 22, 8, 0, 0, 0, time.Local)},
 				store:      map[string]*symbolPrice{"1234": {SymbolCode: "1234", Price: 100}, "2345": {SymbolCode: "2345", Price: 200}, "3456": {SymbolCode: "3456", Price: 300}},
 				expireTime: time.Date(2021, 5, 22, 8, 0, 0, 0, time.Local),
 			},
@@ -152,7 +152,7 @@ func Test_priceStore_GetBySymbolCode(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got1, got2 := test.priceStore.GetBySymbolCode(test.arg)
+			got1, got2 := test.priceStore.getBySymbolCode(test.arg)
 			if !reflect.DeepEqual(test.want1, got1) && !errors.Is(got2, test.want2) {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
 			}
@@ -179,7 +179,7 @@ func Test_priceStore_Set(t *testing.T) {
 			wantExpireTime: time.Date(2021, 5, 23, 8, 0, 0, 0, time.Local)},
 		{name: "ストアの有効期限が切れていなければ、storeに追加する",
 			priceStore: &priceStore{
-				clock:      &testClock{now: time.Date(2021, 5, 25, 9, 0, 0, 0, time.Local)},
+				clock:      &testClock{now1: time.Date(2021, 5, 25, 9, 0, 0, 0, time.Local)},
 				store:      map[string]*symbolPrice{"1234": {SymbolCode: "1234", Price: 100}, "2345": {SymbolCode: "2345", Price: 200}, "3456": {SymbolCode: "3456", Price: 300}},
 				expireTime: time.Date(2021, 5, 26, 8, 0, 0, 0, time.Local)},
 			arg:            &symbolPrice{SymbolCode: "2345", Price: 400, PriceTime: time.Date(2021, 5, 25, 9, 0, 0, 0, time.Local)},
@@ -187,7 +187,7 @@ func Test_priceStore_Set(t *testing.T) {
 			wantExpireTime: time.Date(2021, 5, 26, 8, 0, 0, 0, time.Local)},
 		{name: "有効期限が切れていれば、storeをクリアし、有効期限を延長してから、storeに追加する",
 			priceStore: &priceStore{
-				clock:      &testClock{now: time.Date(2021, 5, 25, 9, 0, 0, 0, time.Local)},
+				clock:      &testClock{now1: time.Date(2021, 5, 25, 9, 0, 0, 0, time.Local)},
 				store:      map[string]*symbolPrice{"1234": {SymbolCode: "1234", Price: 100}, "2345": {SymbolCode: "2345", Price: 200}, "3456": {SymbolCode: "3456", Price: 300}},
 				expireTime: time.Date(2021, 5, 25, 8, 0, 0, 0, time.Local)},
 			arg:            &symbolPrice{SymbolCode: "2345", Price: 400, PriceTime: time.Date(2021, 5, 25, 9, 0, 0, 0, time.Local)},
@@ -195,7 +195,7 @@ func Test_priceStore_Set(t *testing.T) {
 			wantExpireTime: time.Date(2021, 5, 26, 8, 0, 0, 0, time.Local)},
 		{name: "引数がnilならエラー",
 			priceStore: &priceStore{
-				clock:      &testClock{now: time.Date(2021, 5, 25, 9, 0, 0, 0, time.Local)},
+				clock:      &testClock{now1: time.Date(2021, 5, 25, 9, 0, 0, 0, time.Local)},
 				store:      map[string]*symbolPrice{},
 				expireTime: time.Date(2021, 5, 25, 8, 0, 0, 0, time.Local)},
 			arg:            nil,
@@ -208,7 +208,7 @@ func Test_priceStore_Set(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got := test.priceStore.Set(test.arg)
+			got := test.priceStore.set(test.arg)
 			if !errors.Is(got, test.want) ||
 				!reflect.DeepEqual(test.wantStore, test.priceStore.store) ||
 				!reflect.DeepEqual(test.wantExpireTime, test.priceStore.expireTime) {

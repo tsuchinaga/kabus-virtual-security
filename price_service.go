@@ -1,6 +1,6 @@
 package virtual_security
 
-type PriceService interface {
+type iPriceService interface {
 	getBySymbolCode(code string) (*symbolPrice, error)
 	set(price *symbolPrice) error
 	validation(price RegisterPriceRequest) error
@@ -8,16 +8,16 @@ type PriceService interface {
 }
 
 type priceService struct {
-	clock      Clock
-	priceStore PriceStore
+	clock      iClock
+	priceStore iPriceStore
 }
 
 func (s *priceService) getBySymbolCode(code string) (*symbolPrice, error) {
-	return s.priceStore.GetBySymbolCode(code)
+	return s.priceStore.getBySymbolCode(code)
 }
 
 func (s *priceService) set(price *symbolPrice) error {
-	return s.priceStore.Set(price)
+	return s.priceStore.set(price)
 }
 
 func (s *priceService) validation(price RegisterPriceRequest) error {
@@ -49,11 +49,11 @@ func (s *priceService) toSymbolPrice(price RegisterPriceRequest) (*symbolPrice, 
 		AskTime:          price.AskTime,
 		Bid:              price.Bid,
 		BidTime:          price.BidTime,
-		session:          s.clock.GetSession(price.ExchangeType, price.PriceTime),
-		priceBusinessDay: s.clock.GetBusinessDay(price.ExchangeType, price.PriceTime),
+		session:          s.clock.getSession(price.ExchangeType, price.PriceTime),
+		priceBusinessDay: s.clock.getBusinessDay(price.ExchangeType, price.PriceTime),
 	}
 
-	prevPrice, err := s.priceStore.GetBySymbolCode(price.SymbolCode)
+	prevPrice, err := s.priceStore.getBySymbolCode(price.SymbolCode)
 	if err != nil && err != NoDataError {
 		return nil, err
 	}

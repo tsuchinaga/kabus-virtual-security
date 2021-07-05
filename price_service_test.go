@@ -66,8 +66,8 @@ func Test_priceService_toSymbolPrice(t *testing.T) {
 	}{
 		{name: "storeがエラーを吐いたらエラーを返す",
 			clock: &testClock{
-				getSession:     SessionMorning,
-				getBusinessDay: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
+				getSession1:     SessionMorning,
+				getBusinessDay1: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
 			},
 			priceStore: &testPriceStore{
 				getBySymbolCode1: nil,
@@ -86,8 +86,8 @@ func Test_priceService_toSymbolPrice(t *testing.T) {
 			want2: NilArgumentError},
 		{name: "前回の価格がなければ寄りになる",
 			clock: &testClock{
-				getSession:     SessionMorning,
-				getBusinessDay: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
+				getSession1:     SessionMorning,
+				getBusinessDay1: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
 			},
 			priceStore: &testPriceStore{},
 			arg: RegisterPriceRequest{
@@ -115,8 +115,8 @@ func Test_priceService_toSymbolPrice(t *testing.T) {
 			}},
 		{name: "前回の価格と営業日が違えば寄り付きになる",
 			clock: &testClock{
-				getSession:     SessionMorning,
-				getBusinessDay: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
+				getSession1:     SessionMorning,
+				getBusinessDay1: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
 			},
 			priceStore: &testPriceStore{getBySymbolCode1: &symbolPrice{
 				priceBusinessDay: time.Date(2021, 6, 29, 0, 0, 0, 0, time.Local),
@@ -146,8 +146,8 @@ func Test_priceService_toSymbolPrice(t *testing.T) {
 			}},
 		{name: "前回の価格とセッションが違えば寄り付きになる",
 			clock: &testClock{
-				getSession:     SessionAfternoon,
-				getBusinessDay: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
+				getSession1:     SessionAfternoon,
+				getBusinessDay1: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
 			},
 			priceStore: &testPriceStore{getBySymbolCode1: &symbolPrice{
 				priceBusinessDay: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
@@ -178,8 +178,8 @@ func Test_priceService_toSymbolPrice(t *testing.T) {
 			}},
 		{name: "前場引後の時間なら引けになる",
 			clock: &testClock{
-				getSession:     SessionMorning,
-				getBusinessDay: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
+				getSession1:     SessionMorning,
+				getBusinessDay1: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
 			},
 			priceStore: &testPriceStore{getBySymbolCode1: &symbolPrice{
 				priceBusinessDay: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
@@ -210,8 +210,8 @@ func Test_priceService_toSymbolPrice(t *testing.T) {
 			}},
 		{name: "後場引後の時間なら引けになる",
 			clock: &testClock{
-				getSession:     SessionAfternoon,
-				getBusinessDay: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
+				getSession1:     SessionAfternoon,
+				getBusinessDay1: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
 			},
 			priceStore: &testPriceStore{getBySymbolCode1: &symbolPrice{
 				priceBusinessDay: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
@@ -242,8 +242,8 @@ func Test_priceService_toSymbolPrice(t *testing.T) {
 			}},
 		{name: "前回の価格がない状態で前場引後の時間なら寄りかつ引けになる",
 			clock: &testClock{
-				getSession:     SessionMorning,
-				getBusinessDay: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
+				getSession1:     SessionMorning,
+				getBusinessDay1: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
 			},
 			priceStore: &testPriceStore{getBySymbolCode1: nil},
 			arg: RegisterPriceRequest{
@@ -271,8 +271,8 @@ func Test_priceService_toSymbolPrice(t *testing.T) {
 			}},
 		{name: "前回の価格がない状態で後場引後の時間なら寄りかつ引けになる",
 			clock: &testClock{
-				getSession:     SessionAfternoon,
-				getBusinessDay: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
+				getSession1:     SessionAfternoon,
+				getBusinessDay1: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
 			},
 			priceStore: &testPriceStore{getBySymbolCode1: nil},
 			arg: RegisterPriceRequest{
@@ -300,8 +300,8 @@ func Test_priceService_toSymbolPrice(t *testing.T) {
 			}},
 		{name: "ザラバ中ならザラバになる",
 			clock: &testClock{
-				getSession:     SessionAfternoon,
-				getBusinessDay: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
+				getSession1:     SessionAfternoon,
+				getBusinessDay1: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
 			},
 			priceStore: &testPriceStore{getBySymbolCode1: &symbolPrice{
 				priceBusinessDay: time.Date(2021, 6, 30, 0, 0, 0, 0, time.Local),
@@ -349,7 +349,7 @@ func Test_priceService_getBySymbolCode(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name  string
-		store PriceStore
+		store iPriceStore
 		arg   string
 		want1 *symbolPrice
 		want2 error
@@ -383,13 +383,13 @@ func Test_priceService_set(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name  string
-		store PriceStore
+		store iPriceStore
 		arg   *symbolPrice
 		want  error
 	}{
-		{name: "storeからerrがあればそのerrを返す", store: &testPriceStore{set: NilArgumentError}, arg: nil, want: NilArgumentError},
+		{name: "storeからerrがあればそのerrを返す", store: &testPriceStore{set1: NilArgumentError}, arg: nil, want: NilArgumentError},
 		{name: "storeからerrがなければnilを返す",
-			store: &testPriceStore{set: nil}, arg: &symbolPrice{SymbolCode: "1234"}, want: nil},
+			store: &testPriceStore{set1: nil}, arg: &symbolPrice{SymbolCode: "1234"}, want: nil},
 	}
 
 	for _, test := range tests {

@@ -9,77 +9,77 @@ import (
 )
 
 type testStockService struct {
-	newOrderCode      []string
+	newOrderCode1     []string
 	newOrderCodeCount int
-	entry             error
+	entry1            error
 	entryCount        int
 	entryHistory      []struct {
 		order          *stockOrder
 		contractResult *confirmContractResult
 	}
-	exit        error
+	exit1       error
 	exitCount   int
 	exitHistory []struct {
 		order          *stockOrder
 		contractResult *confirmContractResult
 	}
-	getStockOrders                   []*stockOrder
+	getStockOrders1                  []*stockOrder
 	getStockOrderByCode1             *stockOrder
 	getStockOrderByCode2             error
 	getStockOrderByCodeHistory       []string
 	removeStockOrderByCodeHistory    []string
-	getStockPositions                []*stockPosition
+	getStockPositions1               []*stockPosition
 	removeStockPositionByCodeHistory []string
-	addStockOrder                    error
+	addStockOrder1                   error
 	addStockOrderHistory             []*stockOrder
 }
 
-func (t *testStockService) AddStockOrder(order *stockOrder) error {
+func (t *testStockService) addStockOrder(order *stockOrder) error {
 	t.addStockOrderHistory = append(t.addStockOrderHistory, order)
-	return t.addStockOrder
+	return t.addStockOrder1
 }
 
-func (t *testStockService) NewOrderCode() string {
+func (t *testStockService) newOrderCode() string {
 	defer func() { t.newOrderCodeCount++ }()
-	return t.newOrderCode[t.newOrderCodeCount%len(t.newOrderCode)]
+	return t.newOrderCode1[t.newOrderCodeCount%len(t.newOrderCode1)]
 }
 
-func (t *testStockService) Entry(order *stockOrder, contractResult *confirmContractResult) error {
+func (t *testStockService) entry(order *stockOrder, contractResult *confirmContractResult) error {
 	t.entryHistory = append(t.entryHistory, struct {
 		order          *stockOrder
 		contractResult *confirmContractResult
 	}{order: order, contractResult: contractResult})
 	t.entryCount++
-	return t.entry
+	return t.entry1
 }
 
-func (t *testStockService) Exit(order *stockOrder, contractResult *confirmContractResult) error {
+func (t *testStockService) exit(order *stockOrder, contractResult *confirmContractResult) error {
 	t.exitHistory = append(t.exitHistory, struct {
 		order          *stockOrder
 		contractResult *confirmContractResult
 	}{order: order, contractResult: contractResult})
 	t.exitCount++
-	return t.exit
+	return t.exit1
 }
 
-func (t *testStockService) GetStockOrders() []*stockOrder {
-	return t.getStockOrders
+func (t *testStockService) getStockOrders() []*stockOrder {
+	return t.getStockOrders1
 }
 
-func (t *testStockService) GetStockOrderByCode(orderCode string) (*stockOrder, error) {
+func (t *testStockService) getStockOrderByCode(orderCode string) (*stockOrder, error) {
 	t.getStockOrderByCodeHistory = append(t.getStockOrderByCodeHistory, orderCode)
 	return t.getStockOrderByCode1, t.getStockOrderByCode2
 }
 
-func (t *testStockService) RemoveStockOrderByCode(orderCode string) {
+func (t *testStockService) removeStockOrderByCode(orderCode string) {
 	t.removeStockOrderByCodeHistory = append(t.removeStockOrderByCodeHistory, orderCode)
 }
 
-func (t *testStockService) GetStockPositions() []*stockPosition {
-	return t.getStockPositions
+func (t *testStockService) getStockPositions() []*stockPosition {
+	return t.getStockPositions1
 }
 
-func (t *testStockService) RemoveStockPositionByCode(positionCode string) {
+func (t *testStockService) removeStockPositionByCode(positionCode string) {
 	t.removeStockPositionByCodeHistory = append(t.removeStockPositionByCodeHistory, positionCode)
 }
 
@@ -95,7 +95,7 @@ func Test_stockService_Entry(t *testing.T) {
 		wantPositionStoreAdd []*stockPosition
 	}{
 		{name: "それぞれコードを生成し、注文、ポジションをstoreに保存する",
-			stockService: &stockService{uuidGenerator: &testUUIDGenerator{generator: []string{"uuid-1", "uuid-2", "uuid-3"}}},
+			stockService: &stockService{uuidGenerator: &testUUIDGenerator{generator1: []string{"uuid-1", "uuid-2", "uuid-3"}}},
 			arg1: &stockOrder{
 				Code:               "sor-1",
 				SymbolCode:         "1234",
@@ -157,7 +157,7 @@ func Test_stockService_Entry(t *testing.T) {
 			test.stockService.stockOrderStore = stockOrderStore
 			test.stockService.stockPositionStore = stockPositionStore
 
-			got := test.stockService.Entry(test.arg1, test.arg2)
+			got := test.stockService.entry(test.arg1, test.arg2)
 			if !errors.Is(got, test.want) || !reflect.DeepEqual(test.wantOrderStoreAdd, stockOrderStore.addHistory) || !reflect.DeepEqual(test.wantPositionStoreAdd, stockPositionStore.addHistory) {
 				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
 					test.want, test.wantOrderStoreAdd, test.wantPositionStoreAdd,
@@ -198,7 +198,7 @@ func Test_stockService_Exit(t *testing.T) {
 			wantOrderStoreAdd:  []*stockOrder{},
 		},
 		{name: "注文に約定情報を追加し、ストアに保存する",
-			stockService:       &stockService{uuidGenerator: &testUUIDGenerator{generator: []string{"uuid-1", "uuid-2", "uuid-3"}}},
+			stockService:       &stockService{uuidGenerator: &testUUIDGenerator{generator1: []string{"uuid-1", "uuid-2", "uuid-3"}}},
 			stockOrderStore:    &testStockOrderStore{addHistory: []*stockOrder{}},
 			stockPositionStore: &testStockPositionStore{getByCode1: &stockPosition{Code: "spo-1", OwnedQuantity: 300, HoldQuantity: 200}, addHistory: []*stockPosition{}},
 			arg1:               &stockOrder{Code: "sor-1", ClosePositionCode: "spo-1", OrderQuantity: 100},
@@ -233,7 +233,7 @@ func Test_stockService_Exit(t *testing.T) {
 			t.Parallel()
 			test.stockService.stockOrderStore = test.stockOrderStore
 			test.stockService.stockPositionStore = test.stockPositionStore
-			got := test.stockService.Exit(test.arg1, test.arg2)
+			got := test.stockService.exit(test.arg1, test.arg2)
 			if !errors.Is(got, test.want) ||
 				!reflect.DeepEqual(test.wantOrderStoreAdd, test.stockOrderStore.addHistory) {
 
@@ -249,10 +249,10 @@ func Test_stockService_NewOrderCode(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name          string
-		uuidGenerator UUIDGenerator
+		uuidGenerator iUUIDGenerator
 		want          string
 	}{
-		{name: "uuidの結果に接頭辞を付けて返す", uuidGenerator: &testUUIDGenerator{generator: []string{"uuid-1", "uuid-2", "uuid-3"}}, want: "sor-uuid-1"},
+		{name: "uuidの結果に接頭辞を付けて返す", uuidGenerator: &testUUIDGenerator{generator1: []string{"uuid-1", "uuid-2", "uuid-3"}}, want: "sor-uuid-1"},
 	}
 
 	for _, test := range tests {
@@ -260,7 +260,7 @@ func Test_stockService_NewOrderCode(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			service := &stockService{uuidGenerator: test.uuidGenerator}
-			got := service.NewOrderCode()
+			got := service.newOrderCode()
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
@@ -272,14 +272,14 @@ func Test_stockService_GetStockOrders(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name         string
-		stockService StockService
+		stockService iStockService
 		want         []*stockOrder
 	}{
 		{name: "storeの結果が空なら空",
-			stockService: &stockService{stockOrderStore: &testStockOrderStore{getAll: []*stockOrder{}}},
+			stockService: &stockService{stockOrderStore: &testStockOrderStore{getAll1: []*stockOrder{}}},
 			want:         []*stockOrder{}},
 		{name: "storeの結果をそのまま返す",
-			stockService: &stockService{stockOrderStore: &testStockOrderStore{getAll: []*stockOrder{{Code: "sor-1"}, {Code: "sor-2"}, {Code: "sor-3"}}}},
+			stockService: &stockService{stockOrderStore: &testStockOrderStore{getAll1: []*stockOrder{{Code: "sor-1"}, {Code: "sor-2"}, {Code: "sor-3"}}}},
 			want:         []*stockOrder{{Code: "sor-1"}, {Code: "sor-2"}, {Code: "sor-3"}}},
 	}
 
@@ -287,7 +287,7 @@ func Test_stockService_GetStockOrders(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got := test.stockService.GetStockOrders()
+			got := test.stockService.getStockOrders()
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
@@ -299,7 +299,7 @@ func Test_stockService_GetStockOrderByCode(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name         string
-		stockService StockService
+		stockService iStockService
 		arg          string
 		want1        *stockOrder
 		want2        error
@@ -320,7 +320,7 @@ func Test_stockService_GetStockOrderByCode(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got1, got2 := test.stockService.GetStockOrderByCode(test.arg)
+			got1, got2 := test.stockService.getStockOrderByCode(test.arg)
 			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
 			}
@@ -346,7 +346,7 @@ func Test_stockService_RemoveStockOrderByCode(t *testing.T) {
 			t.Parallel()
 			store := &testStockOrderStore{}
 			service := &stockService{stockOrderStore: store}
-			service.RemoveStockOrderByCode(test.arg)
+			service.removeStockOrderByCode(test.arg)
 			if !reflect.DeepEqual(test.removeByCodeHistory, store.removeByCodeHistory) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.removeByCodeHistory, store.removeByCodeHistory)
 			}
@@ -358,14 +358,14 @@ func Test_stockService_GetStockPositions(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name    string
-		service StockService
+		service iStockService
 		want    []*stockPosition
 	}{
 		{name: "storeが空配列を返したら彼配列",
-			service: &stockService{stockPositionStore: &testStockPositionStore{getAll: []*stockPosition{}}},
+			service: &stockService{stockPositionStore: &testStockPositionStore{getAll1: []*stockPosition{}}},
 			want:    []*stockPosition{}},
 		{name: "storeが複数要素を返したラそのまま返す",
-			service: &stockService{stockPositionStore: &testStockPositionStore{getAll: []*stockPosition{{Code: "spo-1"}, {Code: "spo-2"}, {Code: "spo-3"}}}},
+			service: &stockService{stockPositionStore: &testStockPositionStore{getAll1: []*stockPosition{{Code: "spo-1"}, {Code: "spo-2"}, {Code: "spo-3"}}}},
 			want:    []*stockPosition{{Code: "spo-1"}, {Code: "spo-2"}, {Code: "spo-3"}}},
 	}
 
@@ -373,7 +373,7 @@ func Test_stockService_GetStockPositions(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			got := test.service.GetStockPositions()
+			got := test.service.getStockPositions()
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
@@ -399,7 +399,7 @@ func Test_stockService_RemoveStockPositionByCode(t *testing.T) {
 			t.Parallel()
 			store := &testStockPositionStore{}
 			service := &stockService{stockPositionStore: store}
-			service.RemoveStockPositionByCode(test.arg)
+			service.removeStockPositionByCode(test.arg)
 			log.Printf("%+v\n", store)
 			if !reflect.DeepEqual(test.removeByCodeHistory, store.removeByCodeHistory) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.removeByCodeHistory, store.removeByCodeHistory)
@@ -419,7 +419,7 @@ func Test_stockService_AddStockOrder(t *testing.T) {
 	}{
 		{name: "引数が有効な注文ならstoreに渡す", store: &testStockOrderStore{addHistory: []*stockOrder{}}, arg: &stockOrder{Code: "sor-1"}, wantAddHistory: []*stockOrder{{Code: "sor-1"}}},
 		{name: "引数がnilでもstoreに渡す", store: &testStockOrderStore{addHistory: []*stockOrder{}}, arg: nil, wantAddHistory: []*stockOrder{nil}},
-		{name: "errorが返されたらそのerrorを返す", store: &testStockOrderStore{addHistory: []*stockOrder{}, add: NilArgumentError}, arg: nil, want: NilArgumentError, wantAddHistory: []*stockOrder{nil}},
+		{name: "errorが返されたらそのerrorを返す", store: &testStockOrderStore{addHistory: []*stockOrder{}, add1: NilArgumentError}, arg: nil, want: NilArgumentError, wantAddHistory: []*stockOrder{nil}},
 	}
 
 	for _, test := range tests {
@@ -427,7 +427,7 @@ func Test_stockService_AddStockOrder(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			service := &stockService{stockOrderStore: test.store}
-			got := service.AddStockOrder(test.arg)
+			got := service.addStockOrder(test.arg)
 			if !errors.Is(got, test.want) || !reflect.DeepEqual(test.wantAddHistory, test.store.addHistory) {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want, test.wantAddHistory, got, test.store.addHistory)
 			}

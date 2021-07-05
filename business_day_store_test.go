@@ -40,7 +40,7 @@ func Test_getBusinessDayStore(t *testing.T) {
 	}
 }
 
-func Test_businessDayStore_IsBusinessDay(t *testing.T) {
+func Test_businessDayStore_isBusinessDay(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name             string
@@ -101,10 +101,10 @@ func Test_businessDayStore_IsBusinessDay(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			test.businessDayStore.clock = &testClock{now: test.now}
+			test.businessDayStore.clock = &testClock{now1: test.now}
 			businessDay := &testJPXBusinessDay{lastUpdateDate: test.lastUpdateDate, isBusinessDay: test.isBusinessDay, refresh: test.refresh}
 			test.businessDayStore.businessDay = businessDay
-			got, err := test.businessDayStore.IsBusinessDay(test.arg)
+			got, err := test.businessDayStore.isBusinessDay(test.arg)
 			if !reflect.DeepEqual(test.want, got) || (err != nil) != test.hasError || test.refreshCount != businessDay.refreshCount {
 				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(), test.want, test.hasError, test.refreshCount, got, err, businessDay.refreshCount)
 			}
