@@ -27,7 +27,7 @@ func (t *testPriceStore) set(price *symbolPrice) error {
 
 func Test_getPriceStore(t *testing.T) {
 	t.Parallel()
-
+	priceStoreSingleton = nil
 	clock := &testClock{now1: time.Date(2021, 5, 22, 7, 11, 0, 0, time.Local)}
 	got := getPriceStore(clock)
 	want := &priceStore{

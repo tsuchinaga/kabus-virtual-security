@@ -2,6 +2,14 @@ package virtual_security
 
 import "sync"
 
+func newStockService(uuidGenerator iUUIDGenerator, stockOrderStore iStockOrderStore, stockPositionStore iStockPositionStore) iStockService {
+	return &stockService{
+		uuidGenerator:      uuidGenerator,
+		stockOrderStore:    stockOrderStore,
+		stockPositionStore: stockPositionStore,
+	}
+}
+
 type iStockService interface {
 	newOrderCode() string
 	entry(order *stockOrder, contractResult *confirmContractResult) error

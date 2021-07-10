@@ -37,6 +37,7 @@ func (t *testStockOrderStore) removeByCode(code string) {
 
 func Test_getStockOrderStore(t *testing.T) {
 	t.Parallel()
+	stockOrderStoreSingleton = nil
 	got := getStockOrderStore()
 	want := &stockOrderStore{store: map[string]*stockOrder{}}
 	if !reflect.DeepEqual(want, got) {

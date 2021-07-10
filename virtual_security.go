@@ -4,6 +4,14 @@ import (
 	"fmt"
 )
 
+func NewVirtualSecurity() VirtualSecurity {
+	return &virtualSecurity{
+		clock:        newClock(),
+		priceService: newPriceService(newClock(), getPriceStore(newClock())),
+		stockService: newStockService(newUUIDGenerator(), getStockOrderStore(), getStockPositionStore()),
+	}
+}
+
 type VirtualSecurity interface {
 	RegisterPrice(symbolPrice RegisterPriceRequest) error      // 銘柄価格の登録
 	StockOrder(order *StockOrderRequest) (*OrderResult, error) // 現物注文

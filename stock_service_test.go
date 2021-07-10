@@ -434,3 +434,15 @@ func Test_stockService_AddStockOrder(t *testing.T) {
 		})
 	}
 }
+
+func Test_newStockService(t *testing.T) {
+	t.Parallel()
+	uuid := &testUUIDGenerator{}
+	stockOrderStore := &testStockOrderStore{}
+	stockPositionStore := &testStockPositionStore{}
+	want := &stockService{uuidGenerator: uuid, stockOrderStore: stockOrderStore, stockPositionStore: stockPositionStore}
+	got := newStockService(uuid, stockOrderStore, stockPositionStore)
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want, got)
+	}
+}

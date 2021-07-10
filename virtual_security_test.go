@@ -517,3 +517,17 @@ func Test_virtualSecurity_RegisterPrice(t *testing.T) {
 		})
 	}
 }
+
+func Test_NewVirtualSecurity(t *testing.T) {
+	t.Parallel()
+	want := &virtualSecurity{
+		clock:        newClock(),
+		priceService: newPriceService(newClock(), getPriceStore(newClock())),
+		stockService: newStockService(newUUIDGenerator(), getStockOrderStore(), getStockPositionStore()),
+	}
+
+	got := NewVirtualSecurity()
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want, got)
+	}
+}

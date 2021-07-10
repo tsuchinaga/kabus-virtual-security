@@ -29,6 +29,7 @@ func (t *testStockPositionStore) removeByCode(code string) {
 
 func Test_getStockPositionStore(t *testing.T) {
 	t.Parallel()
+	stockPositionStoreSingleton = nil
 	got := getStockPositionStore()
 	want := &stockPositionStore{
 		store: map[string]*stockPosition{},

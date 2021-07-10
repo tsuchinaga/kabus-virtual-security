@@ -404,3 +404,19 @@ func Test_priceService_set(t *testing.T) {
 		})
 	}
 }
+
+func Test_newPriceService(t *testing.T) {
+	t.Parallel()
+	clock := &testClock{}
+	priceStore := &testPriceStore{}
+
+	want := &priceService{
+		clock:      clock,
+		priceStore: priceStore,
+	}
+	got := newPriceService(clock, priceStore)
+
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want, got)
+	}
+}

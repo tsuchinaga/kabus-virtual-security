@@ -1,5 +1,12 @@
 package virtual_security
 
+func newPriceService(clock iClock, priceStore iPriceStore) iPriceService {
+	return &priceService{
+		clock:      clock,
+		priceStore: priceStore,
+	}
+}
+
 type iPriceService interface {
 	getBySymbolCode(code string) (*symbolPrice, error)
 	set(price *symbolPrice) error
