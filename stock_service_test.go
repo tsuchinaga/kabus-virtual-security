@@ -143,6 +143,7 @@ func Test_stockService_Entry(t *testing.T) {
 					ContractedQuantity: 100,
 					OwnedQuantity:      100,
 					HoldQuantity:       0,
+					Price:              1000,
 					ContractedAt:       time.Date(2021, 6, 21, 10, 1, 0, 0, time.Local),
 				},
 			}},

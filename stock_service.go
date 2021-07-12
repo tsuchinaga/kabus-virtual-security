@@ -51,6 +51,7 @@ func (s *stockService) entry(order *stockOrder, contractResult *confirmContractR
 		Side:               order.Side,
 		ContractedQuantity: order.ContractedQuantity,
 		OwnedQuantity:      order.ContractedQuantity,
+		Price:              contractResult.price,
 		ContractedAt:       contractResult.contractedAt,
 		mtx:                sync.Mutex{},
 	})
