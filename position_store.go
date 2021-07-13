@@ -26,6 +26,7 @@ func getStockPositionStore() iStockPositionStore {
 type iStockPositionStore interface {
 	getAll() []*stockPosition
 	getByCode(code string) (*stockPosition, error)
+	getBySymbolCode(symbolCode string) ([]*stockPosition, error)
 	add(stockPosition *stockPosition)
 	removeByCode(code string)
 }
@@ -36,7 +37,7 @@ type stockPositionStore struct {
 	mtx   sync.Mutex
 }
 
-// GetAll - ストアのすべてのポジションをコード順に並べて返す
+// getAll - ストアのすべてのポジションをコード順に並べて返す
 func (s *stockPositionStore) getAll() []*stockPosition {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
@@ -53,7 +54,7 @@ func (s *stockPositionStore) getAll() []*stockPosition {
 	return positions
 }
 
-// GetByCode - コードを指定してデータを取得する
+// getByCode - コードを指定してデータを取得する
 func (s *stockPositionStore) getByCode(code string) (*stockPosition, error) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
@@ -65,7 +66,24 @@ func (s *stockPositionStore) getByCode(code string) (*stockPosition, error) {
 	}
 }
 
-// Add - ポジションをストアに追加する
+// getBySymbolCode - 銘柄コードを指定してデータを取得する
+func (s *stockPositionStore) getBySymbolCode(symbolCode string) ([]*stockPosition, error) {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
+	positions := make([]*stockPosition, 0)
+	for _, position := range s.store {
+		if symbolCode == position.SymbolCode {
+			positions = append(positions, position)
+		}
+	}
+	sort.Slice(positions, func(i, j int) bool {
+		return positions[i].Code < positions[j].Code
+	})
+	return positions, nil
+}
+
+// add - ポジションをストアに追加する
 func (s *stockPositionStore) add(stockPosition *stockPosition) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
@@ -73,7 +91,7 @@ func (s *stockPositionStore) add(stockPosition *stockPosition) {
 	s.store[stockPosition.Code] = stockPosition
 }
 
-// RemoveByCode - コードを指定して削除する
+// removeByCode - コードを指定して削除する
 func (s *stockPositionStore) removeByCode(code string) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
