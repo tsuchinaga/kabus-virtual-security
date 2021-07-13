@@ -7,18 +7,25 @@ import (
 )
 
 type testStockPositionStore struct {
-	getAll1             []*stockPosition
-	getByCode1          *stockPosition
-	getByCode2          error
-	getByCodeHistory    []string
-	addHistory          []*stockPosition
-	removeByCodeHistory []string
+	getAll1                []*stockPosition
+	getByCode1             *stockPosition
+	getByCode2             error
+	getByCodeHistory       []string
+	getBySymbolCode1       []*stockPosition
+	getBySymbolCode2       error
+	getBySymbolCodeHistory []string
+	addHistory             []*stockPosition
+	removeByCodeHistory    []string
 }
 
 func (t *testStockPositionStore) getAll() []*stockPosition { return t.getAll1 }
 func (t *testStockPositionStore) getByCode(code string) (*stockPosition, error) {
 	t.getByCodeHistory = append(t.getByCodeHistory, code)
 	return t.getByCode1, t.getByCode2
+}
+func (t *testStockPositionStore) getBySymbolCode(symbolCode string) ([]*stockPosition, error) {
+	t.getBySymbolCodeHistory = append(t.getBySymbolCodeHistory, symbolCode)
+	return t.getBySymbolCode1, t.getBySymbolCode2
 }
 func (t *testStockPositionStore) add(stockPosition *stockPosition) {
 	t.addHistory = append(t.addHistory, stockPosition)
@@ -28,8 +35,6 @@ func (t *testStockPositionStore) removeByCode(code string) {
 }
 
 func Test_getStockPositionStore(t *testing.T) {
-	t.Parallel()
-	stockPositionStoreSingleton = nil
 	got := getStockPositionStore()
 	want := &stockPositionStore{
 		store: map[string]*stockPosition{},
@@ -167,7 +172,7 @@ func Test_stockPositionStore_Add(t *testing.T) {
 	}
 }
 
-func Test_positionStockStore_RemoveByCode(t *testing.T) {
+func Test_stockPositionStore_RemoveByCode(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name  string
@@ -210,6 +215,51 @@ func Test_positionStockStore_RemoveByCode(t *testing.T) {
 			got := test.store.store
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_stockPositionStore_getBySymbolCode(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		store iStockPositionStore
+		arg   string
+		want1 []*stockPosition
+		want2 error
+	}{
+		{name: "storeにデータがないなら空配列が返される",
+			store: &stockPositionStore{store: map[string]*stockPosition{}},
+			arg:   "1234",
+			want1: []*stockPosition{}},
+		{name: "storeに指定した銘柄コードと一致するデータがないなら空配列が返される",
+			store: &stockPositionStore{store: map[string]*stockPosition{
+				"spo-1": {Code: "spo-1", SymbolCode: "0001"},
+				"spo-2": {Code: "spo-2", SymbolCode: "0002"},
+				"spo-3": {Code: "spo-3", SymbolCode: "0003"},
+			}},
+			arg:   "1234",
+			want1: []*stockPosition{}},
+		{name: "storeに指定した銘柄コードと一致するデータがあればポジションコード順に並べて返される",
+			store: &stockPositionStore{store: map[string]*stockPosition{
+				"spo-1": {Code: "spo-1", SymbolCode: "1234"},
+				"spo-2": {Code: "spo-2", SymbolCode: "0002"},
+				"spo-3": {Code: "spo-3", SymbolCode: "1234"},
+			}},
+			arg: "1234",
+			want1: []*stockPosition{
+				{Code: "spo-1", SymbolCode: "1234"},
+				{Code: "spo-3", SymbolCode: "1234"}}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got1, got2 := test.store.getBySymbolCode(test.arg)
+			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
+				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
 			}
 		})
 	}

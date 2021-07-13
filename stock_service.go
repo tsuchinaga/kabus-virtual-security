@@ -1,6 +1,8 @@
 package virtual_security
 
-import "sync"
+import (
+	"sync"
+)
 
 func newStockService(uuidGenerator iUUIDGenerator, stockOrderStore iStockOrderStore, stockPositionStore iStockPositionStore) iStockService {
 	return &stockService{
@@ -61,27 +63,48 @@ func (s *stockService) entry(order *stockOrder, contractResult *confirmContractR
 }
 
 func (s *stockService) exit(order *stockOrder, contractResult *confirmContractResult) error {
-	closePosition, err := s.stockPositionStore.getByCode(order.ClosePositionCode)
+	positions, err := s.stockPositionStore.getBySymbolCode(order.SymbolCode)
 	if err != nil {
 		return err
 	}
 
-	// まずポジションを注文数拘束し、そのあとポジションを返済する
-	if err := closePosition.hold(order.OrderQuantity); err != nil {
-		return err
+	// positionの保有数が今回返済したいポジションの数より多いかをチェック
+	var totalQuantity float64
+	for _, p := range positions {
+		totalQuantity += p.orderableQuantity()
 	}
-	_ = closePosition.exit(order.OrderQuantity) // 直前でholdしていて確実にexitできるためerrは捨てられる
+	if totalQuantity < order.OrderQuantity {
+		return NotEnoughOwnedQuantityError
+	}
 
-	// 注文に約定情報を追加
-	contractCode := "con-" + s.uuidGenerator.generate()
-	order.contract(&Contract{
-		ContractCode: contractCode,
-		OrderCode:    order.Code,
-		PositionCode: closePosition.Code,
-		Price:        contractResult.price,
-		Quantity:     order.OrderQuantity,
-		ContractedAt: contractResult.contractedAt,
-	})
+	// 古いポジションから順に返したい全量まで返せるだけ返していく
+	q := order.OrderQuantity
+	for _, p := range positions {
+		orderQuantity := p.orderableQuantity()
+		if q < orderQuantity {
+			orderQuantity = q
+		}
+		if orderQuantity <= 0 {
+			continue
+		}
+		q -= orderQuantity
+
+		// まずポジションを注文数拘束し、そのあとポジションを返済する
+		// TODO holdとexit時にエラーが出る可能性が高いのであれば、エラーをコントロールできるようにする
+		_ = p.hold(orderQuantity) // エラーが出る可能性はあるが、エラーが出ても途中まで拘束しているポジションを開放できるわけでもないのでエラーは捨ててしまう
+		_ = p.exit(orderQuantity) // 直前でholdしていて確実にexitできるためerrは捨てられる
+
+		// 注文に約定情報を追加
+		contractCode := "con-" + s.uuidGenerator.generate()
+		order.contract(&Contract{
+			ContractCode: contractCode,
+			OrderCode:    order.Code,
+			PositionCode: p.Code,
+			Price:        contractResult.price,
+			Quantity:     orderQuantity,
+			ContractedAt: contractResult.contractedAt,
+		})
+	}
 
 	// storeに保存
 	return s.stockOrderStore.add(order)

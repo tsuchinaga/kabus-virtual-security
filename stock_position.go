@@ -70,3 +70,7 @@ func (p *stockPosition) release(quantity float64) error {
 func (p *stockPosition) isDied() bool {
 	return p.OwnedQuantity <= 0
 }
+
+func (p *stockPosition) orderableQuantity() float64 {
+	return p.OwnedQuantity - p.HoldQuantity
+}

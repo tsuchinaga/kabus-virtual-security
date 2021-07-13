@@ -140,3 +140,27 @@ func Test_stockPosition_isDied(t *testing.T) {
 		})
 	}
 }
+
+func Test_stockPosition_orderableQuantity(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		position *stockPosition
+		want     float64
+	}{
+		{name: "保有数と拘束数が同じなら0", position: &stockPosition{OwnedQuantity: 300, HoldQuantity: 300}, want: 0},
+		{name: "拘束されていなければ保有数がそのまま出る", position: &stockPosition{OwnedQuantity: 300, HoldQuantity: 0}, want: 300},
+		{name: "部分的に拘束されているなら、保有数-拘束数の値が出る", position: &stockPosition{OwnedQuantity: 300, HoldQuantity: 200}, want: 100},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got := test.position.orderableQuantity()
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}

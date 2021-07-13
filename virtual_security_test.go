@@ -519,7 +519,6 @@ func Test_virtualSecurity_RegisterPrice(t *testing.T) {
 }
 
 func Test_NewVirtualSecurity(t *testing.T) {
-	t.Parallel()
 	want := &virtualSecurity{
 		clock:        newClock(),
 		priceService: newPriceService(newClock(), getPriceStore(newClock())),
