@@ -119,6 +119,7 @@ type StockPosition struct {
 	ContractedQuantity float64   // 約定数量
 	OwnedQuantity      float64   // 保有数量
 	HoldQuantity       float64   // 拘束数量
+	Price              float64   // 約定価格
 	ContractedAt       time.Time // 約定日時
 }
 

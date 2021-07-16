@@ -198,6 +198,7 @@ func (s *virtualSecurity) StockPositions() ([]*StockPosition, error) {
 			OwnedQuantity:      p.OwnedQuantity,
 			HoldQuantity:       p.HoldQuantity,
 			ContractedAt:       p.ContractedAt,
+			Price:              p.Price,
 		}
 		i++
 	}
