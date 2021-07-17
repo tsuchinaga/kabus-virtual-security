@@ -87,7 +87,6 @@ type StockOrderRequest struct {
 	LimitPrice         float64                 // 指値価格
 	ExpiredAt          time.Time               // 有効期限
 	StopCondition      *StockStopCondition     // 現物逆指値条件
-	ClosePositionCode  string                  // 返済するポジションのコード
 }
 
 // OrderResult - 注文結果
