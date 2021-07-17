@@ -170,7 +170,6 @@ func (s *virtualSecurity) StockOrders() ([]*StockOrder, error) {
 			CanceledAt:         o.CanceledAt,
 			Contracts:          o.Contracts,
 			Message:            o.Message,
-			ClosePositionCode:  o.ClosePositionCode,
 		}
 		i++
 	}

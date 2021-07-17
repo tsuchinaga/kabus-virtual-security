@@ -23,7 +23,6 @@ type stockOrder struct {
 	Contracts          []*Contract             // 約定一覧
 	ConfirmingCount    int                     // 約定確認回数
 	Message            string                  // メッセージ
-	ClosePositionCode  string                  // 返済するポジションのコード
 	mtx                sync.Mutex
 }
 

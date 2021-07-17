@@ -75,7 +75,6 @@ type StockOrder struct {
 	CanceledAt         time.Time               // 取消日時
 	Contracts          []*Contract             // 約定一覧
 	Message            string                  // メッセージ
-	ClosePositionCode  string                  // 返済するポジションのコード
 }
 
 // StockOrderRequest - 現物注文リクエスト
