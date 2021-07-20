@@ -1310,9 +1310,9 @@ func Test_stockOrder_isValid(t *testing.T) {
 				ExecutionCondition: StockExecutionConditionMO,
 				SymbolCode:         "1234",
 				OrderQuantity:      100,
-				ExpiredAt:          time.Date(2021, 6, 18, 15, 0, 0, 0, time.Local),
+				ExpiredAt:          time.Date(2021, 6, 18, 0, 0, 0, 0, time.Local),
 			},
-			arg:  time.Date(2021, 6, 18, 16, 0, 0, 0, time.Local),
+			arg:  time.Date(2021, 6, 19, 0, 0, 0, 0, time.Local),
 			want: InvalidExpiredError},
 		{name: "逆指値で逆指値条件が設定されていなければエラー",
 			order: &stockOrder{

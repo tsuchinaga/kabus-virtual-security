@@ -32,6 +32,7 @@ type testStockService struct {
 	removeStockPositionByCodeHistory []string
 	addStockOrder1                   error
 	addStockOrderHistory             []*stockOrder
+	toStockOrder1                    *stockOrder
 }
 
 func (t *testStockService) addStockOrder(order *stockOrder) error {
@@ -83,6 +84,10 @@ func (t *testStockService) removeStockPositionByCode(positionCode string) {
 	t.removeStockPositionByCodeHistory = append(t.removeStockPositionByCodeHistory, positionCode)
 }
 
+func (t *testStockService) toStockOrder(*StockOrderRequest, time.Time) *stockOrder {
+	return t.toStockOrder1
+}
+
 func Test_stockService_Entry(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -123,7 +128,7 @@ func Test_stockService_Entry(t *testing.T) {
 					OrderedAt:          time.Date(2021, 6, 21, 10, 0, 0, 0, time.Local),
 					Contracts: []*Contract{
 						{
-							ContractCode: "con-uuid-1",
+							ContractCode: "sco-uuid-1",
 							OrderCode:    "sor-1",
 							PositionCode: "spo-uuid-2",
 							Price:        1000,
@@ -214,7 +219,7 @@ func Test_stockService_Exit(t *testing.T) {
 				ContractedQuantity: 400,
 				Contracts: []*Contract{
 					{
-						ContractCode: "con-uuid-1",
+						ContractCode: "sco-uuid-1",
 						OrderCode:    "sor-1",
 						PositionCode: "spo-1",
 						Price:        1000,
@@ -222,7 +227,7 @@ func Test_stockService_Exit(t *testing.T) {
 						ContractedAt: time.Date(2021, 6, 21, 10, 1, 0, 0, time.Local),
 					},
 					{
-						ContractCode: "con-uuid-2",
+						ContractCode: "sco-uuid-2",
 						OrderCode:    "sor-1",
 						PositionCode: "spo-2",
 						Price:        1000,
@@ -230,7 +235,7 @@ func Test_stockService_Exit(t *testing.T) {
 						ContractedAt: time.Date(2021, 6, 21, 10, 1, 0, 0, time.Local),
 					},
 					{
-						ContractCode: "con-uuid-3",
+						ContractCode: "sco-uuid-3",
 						OrderCode:    "sor-1",
 						PositionCode: "spo-3",
 						Price:        1000,
@@ -458,5 +463,135 @@ func Test_newStockService(t *testing.T) {
 	got := newStockService(uuid, stockOrderStore, stockPositionStore)
 	if !reflect.DeepEqual(want, got) {
 		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want, got)
+	}
+}
+
+func Test_stockService_newContractCode(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		uuidGenerator iUUIDGenerator
+		want          string
+	}{
+		{name: "uuidの結果に接頭辞を付けて返す", uuidGenerator: &testUUIDGenerator{generator1: []string{"uuid-1", "uuid-2", "uuid-3"}}, want: "sco-uuid-1"},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &stockService{uuidGenerator: test.uuidGenerator}
+			got := service.newContractCode()
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_stockService_newPositionCode(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		uuidGenerator iUUIDGenerator
+		want          string
+	}{
+		{name: "uuidの結果に接頭辞を付けて返す", uuidGenerator: &testUUIDGenerator{generator1: []string{"uuid-1", "uuid-2", "uuid-3"}}, want: "spo-uuid-1"},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &stockService{uuidGenerator: test.uuidGenerator}
+			got := service.newPositionCode()
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_stockService_toStockOrder(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name    string
+		service *stockService
+		arg1    *StockOrderRequest
+		arg2    time.Time
+		want    *stockOrder
+	}{
+		{name: "nilを与えたらnilが返される", service: &stockService{}, arg1: nil, arg2: time.Time{}, want: nil},
+		{name: "有効期限がゼロ値なら当日の年月日が入る",
+			service: &stockService{uuidGenerator: &testUUIDGenerator{generator1: []string{"1", "2", "3"}}},
+			arg1: &StockOrderRequest{
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionMO,
+				SymbolCode:         "1234",
+				Quantity:           1000,
+				LimitPrice:         0,
+				ExpiredAt:          time.Time{},
+				StopCondition:      nil,
+			},
+			arg2: time.Date(2021, 7, 20, 10, 0, 0, 0, time.Local),
+			want: &stockOrder{
+				Code:               "sor-1",
+				OrderStatus:        OrderStatusInOrder,
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionMO,
+				SymbolCode:         "1234",
+				OrderQuantity:      1000,
+				ContractedQuantity: 0,
+				CanceledQuantity:   0,
+				LimitPrice:         0,
+				ExpiredAt:          time.Date(2021, 7, 20, 0, 0, 0, 0, time.Local),
+				StopCondition:      nil,
+				OrderedAt:          time.Date(2021, 7, 20, 10, 0, 0, 0, time.Local),
+				CanceledAt:         time.Time{},
+				Contracts:          []*Contract{},
+				ConfirmingCount:    0,
+				Message:            "",
+			}},
+		{name: "有効期限がゼロ値でないなら、指定した有効期限の年月日が入る",
+			service: &stockService{uuidGenerator: &testUUIDGenerator{generator1: []string{"1", "2", "3"}}},
+			arg1: &StockOrderRequest{
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionMO,
+				SymbolCode:         "1234",
+				Quantity:           1000,
+				LimitPrice:         0,
+				ExpiredAt:          time.Date(2021, 7, 22, 10, 0, 0, 0, time.Local),
+				StopCondition:      nil,
+			},
+			arg2: time.Date(2021, 7, 20, 10, 0, 0, 0, time.Local),
+			want: &stockOrder{
+				Code:               "sor-1",
+				OrderStatus:        OrderStatusInOrder,
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionMO,
+				SymbolCode:         "1234",
+				OrderQuantity:      1000,
+				ContractedQuantity: 0,
+				CanceledQuantity:   0,
+				LimitPrice:         0,
+				ExpiredAt:          time.Date(2021, 7, 22, 0, 0, 0, 0, time.Local),
+				StopCondition:      nil,
+				OrderedAt:          time.Date(2021, 7, 20, 10, 0, 0, 0, time.Local),
+				CanceledAt:         time.Time{},
+				Contracts:          []*Contract{},
+				ConfirmingCount:    0,
+				Message:            "",
+			}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got := test.service.toStockOrder(test.arg1, test.arg2)
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
 	}
 }

@@ -70,19 +70,7 @@ func (s *virtualSecurity) StockOrder(order *StockOrderRequest) (*OrderResult, er
 	now := s.clock.now()
 
 	// 注文番号発行
-	o := &stockOrder{
-		Code:               s.stockService.newOrderCode(),
-		OrderStatus:        OrderStatusInOrder,
-		Side:               order.Side,
-		ExecutionCondition: order.ExecutionCondition,
-		SymbolCode:         order.SymbolCode,
-		OrderQuantity:      order.Quantity,
-		LimitPrice:         order.LimitPrice,
-		ExpiredAt:          order.ExpiredAt,
-		StopCondition:      order.StopCondition,
-		OrderedAt:          now,
-		Contracts:          []*Contract{},
-	}
+	o := s.stockService.toStockOrder(order, now)
 
 	// validation
 	if err := o.isValid(now); err != nil {
