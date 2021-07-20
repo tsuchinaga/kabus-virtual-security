@@ -51,7 +51,7 @@ func (o *stockOrder) isValid(now time.Time) error {
 	if o.ExecutionCondition.IsLimitOrder() && o.LimitPrice <= 0 {
 		return InvalidLimitPriceError
 	}
-	if o.ExpiredAt.Before(now) {
+	if o.ExpiredAt.Before(time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)) {
 		return InvalidExpiredError
 	}
 	if o.ExecutionCondition.IsStop() && (o.StopCondition == nil ||

@@ -2,6 +2,7 @@ package virtual_security
 
 import (
 	"sync"
+	"time"
 )
 
 func newStockService(uuidGenerator iUUIDGenerator, stockOrderStore iStockOrderStore, stockPositionStore iStockPositionStore) iStockService {
@@ -13,7 +14,7 @@ func newStockService(uuidGenerator iUUIDGenerator, stockOrderStore iStockOrderSt
 }
 
 type iStockService interface {
-	newOrderCode() string
+	toStockOrder(order *StockOrderRequest, now time.Time) *stockOrder
 	entry(order *stockOrder, contractResult *confirmContractResult) error
 	exit(order *stockOrder, contractResult *confirmContractResult) error
 	getStockOrders() []*stockOrder
@@ -34,9 +35,17 @@ func (s *stockService) newOrderCode() string {
 	return "sor-" + s.uuidGenerator.generate()
 }
 
+func (s *stockService) newContractCode() string {
+	return "sco-" + s.uuidGenerator.generate()
+}
+
+func (s *stockService) newPositionCode() string {
+	return "spo-" + s.uuidGenerator.generate()
+}
+
 func (s *stockService) entry(order *stockOrder, contractResult *confirmContractResult) error {
-	contractCode := "con-" + s.uuidGenerator.generate()
-	positionCode := "spo-" + s.uuidGenerator.generate()
+	contractCode := s.newContractCode()
+	positionCode := s.newPositionCode()
 	order.contract(&Contract{
 		ContractCode: contractCode,
 		OrderCode:    order.Code,
@@ -95,7 +104,7 @@ func (s *stockService) exit(order *stockOrder, contractResult *confirmContractRe
 		_ = p.exit(orderQuantity) // 直前でholdしていて確実にexitできるためerrは捨てられる
 
 		// 注文に約定情報を追加
-		contractCode := "con-" + s.uuidGenerator.generate()
+		contractCode := s.newContractCode()
 		order.contract(&Contract{
 			ContractCode: contractCode,
 			OrderCode:    order.Code,
@@ -132,4 +141,31 @@ func (s *stockService) getStockPositions() []*stockPosition {
 
 func (s *stockService) removeStockPositionByCode(positionCode string) {
 	s.stockPositionStore.removeByCode(positionCode)
+}
+
+func (s *stockService) toStockOrder(order *StockOrderRequest, now time.Time) *stockOrder {
+	if order == nil {
+		return nil
+	}
+
+	o := &stockOrder{
+		Code:               s.newOrderCode(),
+		OrderStatus:        OrderStatusInOrder,
+		Side:               order.Side,
+		ExecutionCondition: order.ExecutionCondition,
+		SymbolCode:         order.SymbolCode,
+		OrderQuantity:      order.Quantity,
+		LimitPrice:         order.LimitPrice,
+		ExpiredAt:          time.Time{},
+		StopCondition:      order.StopCondition,
+		OrderedAt:          now,
+		Contracts:          []*Contract{},
+	}
+
+	if order.ExpiredAt.IsZero() {
+		o.ExpiredAt = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+	} else {
+		o.ExpiredAt = time.Date(order.ExpiredAt.Year(), order.ExpiredAt.Month(), order.ExpiredAt.Day(), 0, 0, 0, 0, time.Local)
+	}
+	return o
 }
