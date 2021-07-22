@@ -39,7 +39,7 @@ func (s *priceService) validation(price RegisterPriceRequest) error {
 	}
 
 	// 時刻情報がなかったらエラー
-	if price.PriceTime.IsZero() && price.AskTime.IsZero() && price.BidTime.IsZero() {
+	if price.PriceTime.IsZero() && price.BidTime.IsZero() && price.AskTime.IsZero() {
 		return InvalidTimeError
 	}
 
@@ -52,10 +52,10 @@ func (s *priceService) toSymbolPrice(price RegisterPriceRequest) (*symbolPrice, 
 		SymbolCode:       price.SymbolCode,
 		Price:            price.Price,
 		PriceTime:        price.PriceTime,
-		Ask:              price.Ask,
-		AskTime:          price.AskTime,
 		Bid:              price.Bid,
 		BidTime:          price.BidTime,
+		Ask:              price.Ask,
+		AskTime:          price.AskTime,
 		session:          s.clock.getSession(price.ExchangeType, price.PriceTime),
 		priceBusinessDay: s.clock.getBusinessDay(price.ExchangeType, price.PriceTime),
 	}

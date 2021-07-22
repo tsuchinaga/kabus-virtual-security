@@ -362,10 +362,10 @@ func Test_virtualSecurity_StockOrder(t *testing.T) {
 			clock: &testClock{now1: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local), getStockSession1: SessionMorning},
 			priceService: &testPriceService{getBySymbolCode1: &symbolPrice{
 				SymbolCode: "1234",
-				Ask:        1000,
-				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
 				Bid:        1000,
 				BidTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
+				Ask:        1000,
+				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular,
 			}, getBySymbolCode2: nil},
 			stockService: &testStockService{addStockOrder1: NilArgumentError, addStockOrderHistory: []*stockOrder{}, toStockOrder1: &stockOrder{
@@ -393,10 +393,10 @@ func Test_virtualSecurity_StockOrder(t *testing.T) {
 			clock: &testClock{now1: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local), getStockSession1: SessionMorning},
 			priceService: &testPriceService{getBySymbolCode1: &symbolPrice{
 				SymbolCode: "1234",
-				Ask:        1000,
-				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
 				Bid:        1000,
 				BidTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
+				Ask:        1000,
+				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular,
 			}, getBySymbolCode2: nil},
 			stockService: &testStockService{addStockOrder1: NilArgumentError, addStockOrderHistory: []*stockOrder{}, entry1: NoDataError, toStockOrder1: &stockOrder{
@@ -424,10 +424,10 @@ func Test_virtualSecurity_StockOrder(t *testing.T) {
 			clock: &testClock{now1: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local), getStockSession1: SessionMorning},
 			priceService: &testPriceService{getBySymbolCode1: &symbolPrice{
 				SymbolCode: "1234",
-				Ask:        1000,
-				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
 				Bid:        1000,
 				BidTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
+				Ask:        1000,
+				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular,
 			}, getBySymbolCode2: nil},
 			stockService: &testStockService{addStockOrder1: NilArgumentError, addStockOrderHistory: []*stockOrder{}, toStockOrder1: &stockOrder{
@@ -455,10 +455,10 @@ func Test_virtualSecurity_StockOrder(t *testing.T) {
 			clock: &testClock{now1: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local), getStockSession1: SessionMorning},
 			priceService: &testPriceService{getBySymbolCode1: &symbolPrice{
 				SymbolCode: "1234",
-				Ask:        1000,
-				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
 				Bid:        1000,
 				BidTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
+				Ask:        1000,
+				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular,
 			}, getBySymbolCode2: nil},
 			stockService: &testStockService{addStockOrder1: NilArgumentError, addStockOrderHistory: []*stockOrder{}, exit1: NoDataError, toStockOrder1: &stockOrder{
@@ -548,10 +548,10 @@ func Test_virtualSecurity_RegisterPrice(t *testing.T) {
 				SymbolCode: "1234",
 				Price:      1000,
 				PriceTime:  time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
-				Bid:        1010,
-				BidTime:    time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
-				Ask:        990,
+				Ask:        1010,
 				AskTime:    time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
+				Bid:        990,
+				BidTime:    time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular}},
 			stockService: &testStockService{getStockOrders1: []*stockOrder{{
 				SymbolCode:         "1234",
@@ -567,10 +567,10 @@ func Test_virtualSecurity_RegisterPrice(t *testing.T) {
 				SymbolCode: "1234",
 				Price:      1000,
 				PriceTime:  time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
-				Bid:        1010,
-				BidTime:    time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
-				Ask:        990,
+				Ask:        1010,
 				AskTime:    time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
+				Bid:        990,
+				BidTime:    time.Date(2021, 7, 5, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular}},
 			stockService: &testStockService{getStockOrders1: []*stockOrder{{
 				SymbolCode:         "1234",
