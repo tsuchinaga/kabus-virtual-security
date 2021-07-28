@@ -106,13 +106,13 @@ func (o *stockOrder) confirmContractItayoseMO(price *symbolPrice, now time.Time)
 		result.isContracted = true
 		result.price = price.Price
 		result.contractedAt = now
-	} else if o.Side == SideBuy && price.Bid > 0 {
-		result.isContracted = true
-		result.price = price.Bid
-		result.contractedAt = now
-	} else if o.Side == SideSell && price.Ask > 0 {
+	} else if o.Side == SideBuy && price.Ask > 0 {
 		result.isContracted = true
 		result.price = price.Ask
+		result.contractedAt = now
+	} else if o.Side == SideSell && price.Bid > 0 {
+		result.isContracted = true
+		result.price = price.Bid
 		result.contractedAt = now
 	}
 	return result
@@ -126,13 +126,13 @@ func (o *stockOrder) confirmContractAuctionMO(price *symbolPrice, now time.Time)
 	if price == nil {
 		return result
 	}
-	if o.Side == SideBuy && price.Bid > 0 {
-		result.isContracted = true
-		result.price = price.Bid
-		result.contractedAt = now
-	} else if o.Side == SideSell && price.Ask > 0 {
+	if o.Side == SideBuy && price.Ask > 0 {
 		result.isContracted = true
 		result.price = price.Ask
+		result.contractedAt = now
+	} else if o.Side == SideSell && price.Bid > 0 {
+		result.isContracted = true
+		result.price = price.Bid
 		result.contractedAt = now
 	}
 	return result
@@ -160,13 +160,13 @@ func (o *stockOrder) confirmContractItayoseLO(price *symbolPrice, now time.Time)
 			result.contractedAt = now
 		}
 	} else {
-		if o.Side == SideBuy && price.Bid > 0 && o.limitPrice() >= price.Bid {
-			result.isContracted = true
-			result.price = price.Bid
-			result.contractedAt = now
-		} else if o.Side == SideSell && price.Ask > 0 && o.limitPrice() <= price.Ask {
+		if o.Side == SideBuy && price.Ask > 0 && o.limitPrice() >= price.Ask {
 			result.isContracted = true
 			result.price = price.Ask
+			result.contractedAt = now
+		} else if o.Side == SideSell && price.Bid > 0 && o.limitPrice() <= price.Bid {
+			result.isContracted = true
+			result.price = price.Bid
 			result.contractedAt = now
 		}
 	}
@@ -181,21 +181,21 @@ func (o *stockOrder) confirmContractAuctionLO(price *symbolPrice, now time.Time)
 	if price == nil {
 		return result
 	}
-	if o.Side == SideBuy && price.Bid > 0 && o.limitPrice() > price.Bid {
-		result.isContracted = true
-		result.price = o.limitPrice()
-		result.contractedAt = now
-
-		if o.ConfirmingCount == 0 {
-			result.price = price.Bid
-		}
-	} else if o.Side == SideSell && price.Ask > 0 && o.limitPrice() < price.Ask {
+	if o.Side == SideBuy && price.Ask > 0 && o.limitPrice() > price.Ask {
 		result.isContracted = true
 		result.price = o.limitPrice()
 		result.contractedAt = now
 
 		if o.ConfirmingCount == 0 {
 			result.price = price.Ask
+		}
+	} else if o.Side == SideSell && price.Bid > 0 && o.limitPrice() < price.Bid {
+		result.isContracted = true
+		result.price = o.limitPrice()
+		result.contractedAt = now
+
+		if o.ConfirmingCount == 0 {
+			result.price = price.Bid
 		}
 	}
 	return result
