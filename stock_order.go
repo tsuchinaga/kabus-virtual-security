@@ -86,6 +86,7 @@ func (o *stockOrder) isDied(now time.Time) bool {
 	return false
 }
 
+// TODO sessionでのチェックではなく時間でのチェックにしたほうが良さそう
 func (o *stockOrder) isContractableTime(session Session) bool {
 	return (o.executionCondition().IsContractableMorningSession() && session == SessionMorning) ||
 		(o.executionCondition().IsContractableMorningSessionClosing() && session == SessionMorning) ||
@@ -223,7 +224,7 @@ func (o *stockOrder) confirmContract(price *symbolPrice, now time.Time, session 
 	o.mtx.Lock()
 	defer o.mtx.Unlock()
 
-	// 銘柄・市場が同一でなければfalse
+	// 銘柄が同一でなければfalse
 	if o.SymbolCode != price.SymbolCode {
 		return &confirmContractResult{isContracted: false}
 	}
@@ -380,7 +381,7 @@ func (o *stockOrder) activate(price *symbolPrice, now time.Time) {
 	o.mtx.Lock()
 	defer o.mtx.Unlock()
 
-	// 銘柄・市場が同一でなければ何もしない
+	// 銘柄が同一でなければ何もしない
 	if o.SymbolCode != price.SymbolCode {
 		return
 	}
