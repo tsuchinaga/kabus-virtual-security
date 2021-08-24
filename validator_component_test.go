@@ -6,16 +6,21 @@ import (
 	"time"
 )
 
-type testValidationComponent struct {
+type testValidatorComponent struct {
 	iValidatorComponent
+	isValidStockOrder1  error
 	isValidMarginOrder1 error
 }
 
-func (t *testValidationComponent) isValidMarginOrder(*marginOrder, time.Time, []*marginPosition) error {
+func (t *testValidatorComponent) isValidStockOrder(*stockOrder, time.Time, []*stockPosition) error {
+	return t.isValidStockOrder1
+}
+
+func (t *testValidatorComponent) isValidMarginOrder(*marginOrder, time.Time, []*marginPosition) error {
 	return t.isValidMarginOrder1
 }
 
-func Test_validationComponent_isValidMarginOrder(t *testing.T) {
+func Test_validatorComponent_isValidMarginOrder(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name string
@@ -258,6 +263,180 @@ func Test_validationComponent_isValidMarginOrder(t *testing.T) {
 			t.Parallel()
 			component := &validatorComponent{}
 			got := component.isValidMarginOrder(test.arg1, test.arg2, test.arg3)
+			if !errors.Is(got, test.want) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_validatorComponent_isValidStockOrder(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		arg1 *stockOrder
+		arg2 time.Time
+		arg3 []*stockPosition
+		want error
+	}{
+		{name: "方向が不明ならエラー",
+			arg1: &stockOrder{
+				ExecutionCondition: StockExecutionConditionMO,
+				SymbolCode:         "1234",
+				OrderQuantity:      100,
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{},
+			want: InvalidSideError},
+		{name: "執行条件が不明ならエラー",
+			arg1: &stockOrder{
+				Side:          SideBuy,
+				SymbolCode:    "1234",
+				OrderQuantity: 100,
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{},
+			want: InvalidExecutionConditionError},
+		{name: "銘柄がゼロ値ならエラー",
+			arg1: &stockOrder{
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionMO,
+				OrderQuantity:      100,
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{},
+			want: InvalidSymbolCodeError},
+		{name: "数量がゼロ値ならエラー",
+			arg1: &stockOrder{
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionMO,
+				SymbolCode:         "1234",
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{},
+			want: InvalidQuantityError},
+		{name: "指値を指定して指値価格がゼロ値ならエラー",
+			arg1: &stockOrder{
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionLO,
+				SymbolCode:         "1234",
+				OrderQuantity:      100,
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{},
+			want: InvalidLimitPriceError},
+		{name: "指値を指定して指値価格があればエラーなし",
+			arg1: &stockOrder{
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionLO,
+				SymbolCode:         "1234",
+				OrderQuantity:      100,
+				LimitPrice:         1000,
+				ExpiredAt:          time.Date(2021, 8, 19, 0, 0, 0, 0, time.Local),
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{},
+			want: nil},
+		{name: "有効期限が過去ならエラー",
+			arg1: &stockOrder{
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionMO,
+				SymbolCode:         "1234",
+				OrderQuantity:      100,
+				ExpiredAt:          time.Date(2021, 8, 18, 0, 0, 0, 0, time.Local),
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{},
+			want: InvalidExpiredError},
+		{name: "逆指値で逆指値条件が設定されていなければエラー",
+			arg1: &stockOrder{
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionStop,
+				SymbolCode:         "1234",
+				OrderQuantity:      100,
+				ExpiredAt:          time.Date(2021, 8, 19, 0, 0, 0, 0, time.Local),
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{},
+			want: InvalidStopConditionError},
+		{name: "逆指値でトリガー価格が設定されていなければエラー",
+			arg1: &stockOrder{
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionStop,
+				SymbolCode:         "1234",
+				OrderQuantity:      100,
+				ExpiredAt:          time.Date(2021, 8, 19, 0, 0, 0, 0, time.Local),
+				StopCondition:      &StockStopCondition{},
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{},
+			want: InvalidStopConditionError},
+		{name: "逆指値でトリガー後の執行条件が逆指値ならエラー",
+			arg1: &stockOrder{
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionStop,
+				SymbolCode:         "1234",
+				OrderQuantity:      100,
+				ExpiredAt:          time.Date(2021, 8, 19, 0, 0, 0, 0, time.Local),
+				StopCondition:      &StockStopCondition{StopPrice: 2000, ExecutionConditionAfterHit: StockExecutionConditionStop},
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{},
+			want: InvalidStopConditionError},
+		{name: "逆指値でトリガー後の執行条件が指値で指値価格が指定されていなければエラー",
+			arg1: &stockOrder{
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionStop,
+				SymbolCode:         "1234",
+				OrderQuantity:      100,
+				ExpiredAt:          time.Date(2021, 8, 19, 0, 0, 0, 0, time.Local),
+				StopCondition:      &StockStopCondition{StopPrice: 2000, ExecutionConditionAfterHit: StockExecutionConditionLO},
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{},
+			want: InvalidStopConditionError},
+		{name: "逆指値でトリガー後の執行条件が指値で指値価格が指定されていればエラーなし",
+			arg1: &stockOrder{
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionStop,
+				SymbolCode:         "1234",
+				OrderQuantity:      100,
+				ExpiredAt:          time.Date(2021, 8, 19, 0, 0, 0, 0, time.Local),
+				StopCondition:      &StockStopCondition{StopPrice: 2000, ExecutionConditionAfterHit: StockExecutionConditionLO, LimitPriceAfterHit: 2100},
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{},
+			want: nil},
+		{name: "Sellでexitするポジションの保有数が足りなければエラー",
+			arg1: &stockOrder{
+				Side:               SideSell,
+				ExecutionCondition: StockExecutionConditionMO,
+				SymbolCode:         "1234",
+				OrderQuantity:      100,
+				ExpiredAt:          time.Date(2021, 8, 19, 0, 0, 0, 0, time.Local),
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{{Code: "spo-01", OwnedQuantity: 100, HoldQuantity: 100}, {Code: "spo-02", OwnedQuantity: 100, HoldQuantity: 70}, {Code: "spo-03", OwnedQuantity: 50, HoldQuantity: 0}},
+			want: NotEnoughOwnedQuantityError},
+		{name: "Sellでexitするポジションがあればエラーなし",
+			arg1: &stockOrder{
+				Side:               SideSell,
+				ExecutionCondition: StockExecutionConditionMO,
+				SymbolCode:         "1234",
+				OrderQuantity:      100,
+				ExpiredAt:          time.Date(2021, 8, 19, 0, 0, 0, 0, time.Local),
+			},
+			arg2: time.Date(2021, 8, 19, 14, 0, 0, 0, time.Local),
+			arg3: []*stockPosition{{Code: "spo-01", OwnedQuantity: 100, HoldQuantity: 80}, {Code: "spo-02", OwnedQuantity: 100, HoldQuantity: 70}, {Code: "spo-03", OwnedQuantity: 50, HoldQuantity: 0}},
+			want: nil},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			component := &validatorComponent{}
+			got := component.isValidStockOrder(test.arg1, test.arg2, test.arg3)
 			if !errors.Is(got, test.want) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}

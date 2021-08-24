@@ -14,7 +14,7 @@ type testStockPositionStore struct {
 	getBySymbolCode1       []*stockPosition
 	getBySymbolCode2       error
 	getBySymbolCodeHistory []string
-	addHistory             []*stockPosition
+	saveHistory            []*stockPosition
 	removeByCodeHistory    []string
 }
 
@@ -27,8 +27,8 @@ func (t *testStockPositionStore) getBySymbolCode(symbolCode string) ([]*stockPos
 	t.getBySymbolCodeHistory = append(t.getBySymbolCodeHistory, symbolCode)
 	return t.getBySymbolCode1, t.getBySymbolCode2
 }
-func (t *testStockPositionStore) add(stockPosition *stockPosition) {
-	t.addHistory = append(t.addHistory, stockPosition)
+func (t *testStockPositionStore) save(stockPosition *stockPosition) {
+	t.saveHistory = append(t.saveHistory, stockPosition)
 }
 func (t *testStockPositionStore) removeByCode(code string) {
 	t.removeByCodeHistory = append(t.removeByCodeHistory, code)
@@ -122,7 +122,7 @@ func Test_stockPositionStore_GetByCode(t *testing.T) {
 	}
 }
 
-func Test_stockPositionStore_Add(t *testing.T) {
+func Test_stockPositionStore_Save(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name  string
@@ -130,6 +130,19 @@ func Test_stockPositionStore_Add(t *testing.T) {
 		arg   *stockPosition
 		want  map[string]*stockPosition
 	}{
+		{name: "引数がnilなら何もしない",
+			store: &stockPositionStore{
+				store: map[string]*stockPosition{
+					"pos_1234": {Code: "pos_1234"},
+					"pos_2345": {Code: "pos_2345"},
+					"pos_3456": {Code: "pos_3456"},
+				}},
+			arg: nil,
+			want: map[string]*stockPosition{
+				"pos_1234": {Code: "pos_1234"},
+				"pos_2345": {Code: "pos_2345"},
+				"pos_3456": {Code: "pos_3456"},
+			}},
 		{name: "キーが重複しなければ新しいデータが追加される",
 			store: &stockPositionStore{
 				store: map[string]*stockPosition{
@@ -163,7 +176,7 @@ func Test_stockPositionStore_Add(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			test.store.add(test.arg)
+			test.store.save(test.arg)
 			got := test.store.store
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)

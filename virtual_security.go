@@ -8,7 +8,7 @@ func NewVirtualSecurity() VirtualSecurity {
 	return &virtualSecurity{
 		clock:         newClock(),
 		priceService:  newPriceService(newClock(), getPriceStore(newClock())),
-		stockService:  newStockService(newUUIDGenerator(), getStockOrderStore(), getStockPositionStore()),
+		stockService:  newStockService(newUUIDGenerator(), getStockOrderStore(), getStockPositionStore(), newValidatorComponent(), newStockContractComponent()),
 		marginService: newMarginService(newUUIDGenerator(), getMarginOrderStore(), getMarginPositionStore(), newValidatorComponent(), newStockContractComponent()),
 	}
 }
@@ -53,16 +53,12 @@ func (s *virtualSecurity) RegisterPrice(symbolPrice RegisterPriceRequest) error 
 
 	// 現物約定確認
 	now := s.clock.now()
-	session := s.clock.getStockSession(now) // priceのsessionと一致しないことがあるため現在時刻で取得する
 	for _, o := range s.stockService.getStockOrders() {
-		res := o.confirmContract(price, now, session)
-		if res.isContracted {
-			switch o.Side {
-			case SideBuy:
-				_ = s.stockService.entry(o, res)
-			case SideSell:
-				_ = s.stockService.exit(o, res)
-			}
+		switch o.Side {
+		case SideBuy:
+			_ = s.stockService.entry(o, price, now)
+		case SideSell:
+			_ = s.stockService.exit(o, price, now)
 		}
 	}
 
@@ -70,9 +66,9 @@ func (s *virtualSecurity) RegisterPrice(symbolPrice RegisterPriceRequest) error 
 	for _, o := range s.marginService.getMarginOrders() {
 		switch o.TradeType {
 		case TradeTypeEntry:
-			_ = s.marginService.confirmContract(o, price, now)
+			_ = s.marginService.entry(o, price, now)
 		case TradeTypeExit:
-			_ = s.marginService.confirmContract(o, price, now)
+			_ = s.marginService.exit(o, price, now)
 		}
 	}
 
@@ -91,37 +87,35 @@ func (s *virtualSecurity) StockOrder(order *StockOrderRequest) (*OrderResult, er
 	o := s.stockService.toStockOrder(order, now)
 
 	// validation
-	if err := o.isValid(now); err != nil {
+	if err := s.stockService.validation(o, now); err != nil {
 		return nil, err
 	}
 
-	// 該当銘柄の価格取得
-	price, err := s.priceService.getBySymbolCode(order.SymbolCode)
-	if err == nil {
-		// 価格があれば約定確認
-		// sessionを特定する
-		session := s.clock.getStockSession(now)
-		res := o.confirmContract(price, now, session)
-
-		// 約定していたら約定状態に更新し、ポジションも更新する
-		if res.isContracted {
-			var err error
-			switch order.Side {
-			case SideBuy:
-				err = s.stockService.entry(o, res)
-			case SideSell:
-				err = s.stockService.exit(o, res)
-			}
-			if err != nil {
-				return nil, err
-			}
-		}
-	} else if err == NoDataError {
-		if err := s.stockService.addStockOrder(o); err != nil {
+	// sell注文ならsellするポジションをholdする
+	if o.Side == SideSell {
+		if err := s.stockService.holdSellOrderPositions(o); err != nil {
 			return nil, err
 		}
-	} else {
-		return nil, err
+	}
+
+	// ここまでこれば有効な注文なので、処理後に保存する
+	defer s.stockService.saveStockOrder(o)
+
+	// 該当銘柄の価格取得
+	price, priceErr := s.priceService.getBySymbolCode(order.SymbolCode)
+	if priceErr != nil && priceErr != NoDataError {
+		return nil, priceErr
+	}
+
+	// 価格情報がNoDataでなければ最初の約定確認処理をする
+	// 注文でエラーがでても使い道がないので捨てる
+	if priceErr != NoDataError {
+		switch order.Side {
+		case SideBuy:
+			_ = s.stockService.entry(o, price, now)
+		case SideSell:
+			_ = s.stockService.exit(o, price, now)
+		}
 	}
 
 	// 注文番号を返す

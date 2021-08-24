@@ -55,9 +55,6 @@ func (t *testMarginService) saveMarginOrder(order *marginOrder) {
 func (t *testMarginService) removeMarginOrderByCode(string)        {}
 func (t *testMarginService) getMarginPositions() []*marginPosition { return t.getMarginPositions1 }
 func (t *testMarginService) removeMarginPositionByCode(string)     {}
-func (t *testMarginService) confirmContract(*marginOrder, *symbolPrice, time.Time) *confirmContractResult {
-	return t.confirmContract1
-}
 
 func Test_marginService_newOrderCode(t *testing.T) {
 	t.Parallel()
@@ -199,7 +196,7 @@ func Test_marginService_validation(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			service := &marginService{marginPositionStore: &testMarginPositionStore{}, validatorComponent: &testValidationComponent{isValidMarginOrder1: test.isValidMarginOrder1}}
+			service := &marginService{marginPositionStore: &testMarginPositionStore{}, validatorComponent: &testValidatorComponent{isValidMarginOrder1: test.isValidMarginOrder1}}
 			got := service.validation(&marginOrder{}, time.Now())
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
@@ -501,72 +498,6 @@ func Test_marginService_removeMarginPositionByCode(t *testing.T) {
 			log.Printf("%+v\n", store)
 			if !reflect.DeepEqual(test.removeByCodeHistory, store.removeByCodeHistory) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.removeByCodeHistory, store.removeByCodeHistory)
-			}
-		})
-	}
-}
-
-func Test_marginService_confirmContract(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name    string
-		service iMarginService
-		arg1    *marginOrder
-		arg2    *symbolPrice
-		arg3    time.Time
-		want    *confirmContractResult
-	}{
-		{name: "約定確認で約定すると判定されたら約定",
-			service: &marginService{stockContractComponent: &testStockContractComponent{isContractableTime1: true, confirmMarginOrderContract1: &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 8, 19, 10, 0, 0, 0, time.Local)}}},
-			arg1:    &marginOrder{SymbolCode: "1234", OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMO},
-			arg2:    &symbolPrice{SymbolCode: "1234"},
-			arg3:    time.Date(2021, 8, 19, 10, 0, 0, 0, time.Local),
-			want:    &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 8, 19, 10, 0, 0, 0, time.Local)}},
-		{name: "注文がnilなら約定しない",
-			service: &marginService{stockContractComponent: &testStockContractComponent{confirmMarginOrderContract1: &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 8, 19, 10, 0, 0, 0, time.Local)}}},
-			arg1:    nil,
-			arg2:    &symbolPrice{SymbolCode: "1234"},
-			arg3:    time.Date(2021, 8, 19, 10, 0, 0, 0, time.Local),
-			want:    &confirmContractResult{isContracted: false}},
-		{name: "価格がnilなら約定しない",
-			service: &marginService{stockContractComponent: &testStockContractComponent{confirmMarginOrderContract1: &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 8, 19, 10, 0, 0, 0, time.Local)}}},
-			arg1:    &marginOrder{SymbolCode: "1234", OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMO},
-			arg2:    nil,
-			arg3:    time.Date(2021, 8, 19, 10, 0, 0, 0, time.Local),
-			want:    &confirmContractResult{isContracted: false}},
-		{name: "注文と価格の銘柄が一致していなければ約定しない",
-			service: &marginService{stockContractComponent: &testStockContractComponent{confirmMarginOrderContract1: &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 8, 19, 10, 0, 0, 0, time.Local)}}},
-			arg1:    &marginOrder{SymbolCode: "2345", OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMO},
-			arg2:    &symbolPrice{SymbolCode: "1234"},
-			arg3:    time.Date(2021, 8, 19, 10, 0, 0, 0, time.Local),
-			want:    &confirmContractResult{isContracted: false}},
-		{name: "注文が約定可能な状態でなければ約定しない",
-			service: &marginService{stockContractComponent: &testStockContractComponent{confirmMarginOrderContract1: &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 8, 19, 10, 0, 0, 0, time.Local)}}},
-			arg1:    &marginOrder{SymbolCode: "1234", OrderStatus: OrderStatusDone, ExecutionCondition: StockExecutionConditionMO},
-			arg2:    &symbolPrice{SymbolCode: "1234"},
-			arg3:    time.Date(2021, 8, 19, 10, 0, 0, 0, time.Local),
-			want:    &confirmContractResult{isContracted: false}},
-		{name: "約定可能時間でなければ約定しない",
-			service: &marginService{stockContractComponent: &testStockContractComponent{confirmMarginOrderContract1: &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 8, 19, 10, 0, 0, 0, time.Local)}}},
-			arg1:    &marginOrder{SymbolCode: "1234", OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMO},
-			arg2:    &symbolPrice{SymbolCode: "1234"},
-			arg3:    time.Date(2021, 8, 19, 8, 0, 0, 0, time.Local),
-			want:    &confirmContractResult{isContracted: false}},
-		{name: "約定確認で約定しないと判定されれば約定しない",
-			service: &marginService{stockContractComponent: &testStockContractComponent{confirmMarginOrderContract1: &confirmContractResult{isContracted: false}}},
-			arg1:    &marginOrder{SymbolCode: "1234", OrderStatus: OrderStatusInOrder, ExecutionCondition: StockExecutionConditionMO},
-			arg2:    &symbolPrice{SymbolCode: "1234"},
-			arg3:    time.Date(2021, 8, 19, 10, 0, 0, 0, time.Local),
-			want:    &confirmContractResult{isContracted: false}},
-	}
-
-	for _, test := range tests {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			got := test.service.confirmContract(test.arg1, test.arg2, test.arg3)
-			if !reflect.DeepEqual(test.want, got) {
-				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
 		})
 	}

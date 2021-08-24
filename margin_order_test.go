@@ -412,3 +412,25 @@ func Test_marginOrder_cancel(t *testing.T) {
 		})
 	}
 }
+
+func Test_marginOrder_lock_unlock(t *testing.T) {
+	t.Parallel()
+
+	order := &marginOrder{OrderQuantity: 1}
+	order.lock()
+	go func() {
+		defer order.unlock()
+		<-time.After(1 * time.Second)
+		order.OrderQuantity = 2
+	}()
+
+	order.lock()
+	order.OrderQuantity = 3
+	order.unlock()
+
+	want := 3.0
+	got := order.OrderQuantity
+	if !reflect.DeepEqual(want, got) {
+		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want, got)
+	}
+}

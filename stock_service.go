@@ -5,30 +5,42 @@ import (
 	"time"
 )
 
-func newStockService(uuidGenerator iUUIDGenerator, stockOrderStore iStockOrderStore, stockPositionStore iStockPositionStore) iStockService {
+func newStockService(
+	uuidGenerator iUUIDGenerator,
+	stockOrderStore iStockOrderStore,
+	stockPositionStore iStockPositionStore,
+	validatorComponent iValidatorComponent,
+	stockContractComponent iStockContractComponent,
+) iStockService {
 	return &stockService{
-		uuidGenerator:      uuidGenerator,
-		stockOrderStore:    stockOrderStore,
-		stockPositionStore: stockPositionStore,
+		uuidGenerator:          uuidGenerator,
+		stockOrderStore:        stockOrderStore,
+		stockPositionStore:     stockPositionStore,
+		validatorComponent:     validatorComponent,
+		stockContractComponent: stockContractComponent,
 	}
 }
 
 type iStockService interface {
 	toStockOrder(order *StockOrderRequest, now time.Time) *stockOrder
-	entry(order *stockOrder, contractResult *confirmContractResult) error
-	exit(order *stockOrder, contractResult *confirmContractResult) error
+	entry(order *stockOrder, price *symbolPrice, now time.Time) error
+	exit(order *stockOrder, price *symbolPrice, now time.Time) error
 	getStockOrders() []*stockOrder
 	getStockOrderByCode(orderCode string) (*stockOrder, error)
-	addStockOrder(order *stockOrder) error
+	saveStockOrder(order *stockOrder)
 	removeStockOrderByCode(orderCode string)
 	getStockPositions() []*stockPosition
 	removeStockPositionByCode(positionCode string)
+	holdSellOrderPositions(order *stockOrder) error
+	validation(order *stockOrder, now time.Time) error
 }
 
 type stockService struct {
-	uuidGenerator      iUUIDGenerator
-	stockOrderStore    iStockOrderStore
-	stockPositionStore iStockPositionStore
+	uuidGenerator          iUUIDGenerator
+	stockOrderStore        iStockOrderStore
+	stockPositionStore     iStockPositionStore
+	validatorComponent     iValidatorComponent
+	stockContractComponent iStockContractComponent
 }
 
 func (s *stockService) newOrderCode() string {
@@ -43,7 +55,18 @@ func (s *stockService) newPositionCode() string {
 	return "spo-" + s.uuidGenerator.generate()
 }
 
-func (s *stockService) entry(order *stockOrder, contractResult *confirmContractResult) error {
+func (s *stockService) entry(order *stockOrder, price *symbolPrice, now time.Time) error {
+	// 最低限のvalidation
+	if order == nil || price == nil {
+		return NilArgumentError
+	}
+
+	// 約定可能かのチェック
+	contractResult := s.stockContractComponent.confirmStockOrderContract(order, price, now)
+	if !contractResult.isContracted {
+		return nil
+	}
+
 	contractCode := s.newContractCode()
 	positionCode := s.newPositionCode()
 	order.contract(&Contract{
@@ -55,7 +78,7 @@ func (s *stockService) entry(order *stockOrder, contractResult *confirmContractR
 		ContractedAt: contractResult.contractedAt,
 	})
 
-	s.stockPositionStore.add(&stockPosition{
+	s.stockPositionStore.save(&stockPosition{
 		Code:               positionCode,
 		OrderCode:          order.Code,
 		SymbolCode:         order.SymbolCode,
@@ -67,41 +90,49 @@ func (s *stockService) entry(order *stockOrder, contractResult *confirmContractR
 		mtx:                sync.Mutex{},
 	})
 
-	// storeに保存
-	return s.stockOrderStore.add(order)
+	return nil
 }
 
-func (s *stockService) exit(order *stockOrder, contractResult *confirmContractResult) error {
+func (s *stockService) exit(order *stockOrder, price *symbolPrice, now time.Time) error {
+	// 最低限のvalidation
+	if order == nil || price == nil {
+		return NilArgumentError
+	}
+
+	// 約定可能かのチェックし保存
+	contractResult := s.stockContractComponent.confirmStockOrderContract(order, price, now)
+	if !contractResult.isContracted {
+		return nil
+	}
+
 	positions, err := s.stockPositionStore.getBySymbolCode(order.SymbolCode)
 	if err != nil {
 		return err
 	}
 
-	// positionの保有数が今回返済したいポジションの数より多いかをチェック
-	var totalQuantity float64
+	// positionの拘束数が今回返済したいポジションの数より多いかをチェック
+	var totalHoldQuantity float64
 	for _, p := range positions {
-		totalQuantity += p.orderableQuantity()
+		totalHoldQuantity += p.orderableQuantity()
 	}
-	if totalQuantity < order.OrderQuantity {
-		return NotEnoughOwnedQuantityError
+	if totalHoldQuantity < order.OrderQuantity {
+		return NotEnoughHoldQuantityError
 	}
 
 	// 古いポジションから順に返したい全量まで返せるだけ返していく
 	q := order.OrderQuantity
 	for _, p := range positions {
-		orderQuantity := p.orderableQuantity()
-		if q < orderQuantity {
-			orderQuantity = q
+		exitQuantity := p.HoldQuantity
+		if q < exitQuantity {
+			exitQuantity = q
 		}
-		if orderQuantity <= 0 {
+		if exitQuantity <= 0 {
 			continue
 		}
-		q -= orderQuantity
+		q -= exitQuantity
 
-		// まずポジションを注文数拘束し、そのあとポジションを返済する
-		// TODO holdとexit時にエラーが出る可能性が高いのであれば、エラーをコントロールできるようにする
-		_ = p.hold(orderQuantity) // エラーが出る可能性はあるが、エラーが出ても途中まで拘束しているポジションを開放できるわけでもないのでエラーは捨ててしまう
-		_ = p.exit(orderQuantity) // 直前でholdしていて確実にexitできるためerrは捨てられる
+		// TODO exit時にエラーが出る可能性があれば、エラーをコントロールできるようにする
+		_ = p.exit(exitQuantity) // 直前でholdしていて確実にexitできるためerrは捨てられる
 
 		// 注文に約定情報を追加
 		contractCode := s.newContractCode()
@@ -110,13 +141,12 @@ func (s *stockService) exit(order *stockOrder, contractResult *confirmContractRe
 			OrderCode:    order.Code,
 			PositionCode: p.Code,
 			Price:        contractResult.price,
-			Quantity:     orderQuantity,
+			Quantity:     exitQuantity,
 			ContractedAt: contractResult.contractedAt,
 		})
 	}
 
-	// storeに保存
-	return s.stockOrderStore.add(order)
+	return nil
 }
 
 func (s *stockService) getStockOrders() []*stockOrder {
@@ -127,8 +157,8 @@ func (s *stockService) getStockOrderByCode(orderCode string) (*stockOrder, error
 	return s.stockOrderStore.getByCode(orderCode)
 }
 
-func (s *stockService) addStockOrder(order *stockOrder) error {
-	return s.stockOrderStore.add(order)
+func (s *stockService) saveStockOrder(order *stockOrder) {
+	s.stockOrderStore.save(order)
 }
 
 func (s *stockService) removeStockOrderByCode(orderCode string) {
@@ -168,4 +198,41 @@ func (s *stockService) toStockOrder(order *StockOrderRequest, now time.Time) *st
 		o.ExpiredAt = time.Date(order.ExpiredAt.Year(), order.ExpiredAt.Month(), order.ExpiredAt.Day(), 0, 0, 0, 0, time.Local)
 	}
 	return o
+}
+
+func (s *stockService) holdSellOrderPositions(order *stockOrder) error {
+	if order == nil {
+		return NilArgumentError
+	}
+
+	positions := s.stockPositionStore.getAll()
+
+	// 全数が足りるか
+	var totalOrderableQuantity float64
+	for _, pos := range positions {
+		totalOrderableQuantity += pos.orderableQuantity()
+	}
+	if totalOrderableQuantity < order.OrderQuantity {
+		return NotEnoughOwnedQuantityError
+	}
+
+	// 足りれば、個別にholdしていく
+	required := order.OrderQuantity
+	for _, pos := range positions {
+		// ポジションの保有数が返したい数より少なければhold可能な数だけholdし、返したい数が少なければ返したい数だけ返す
+		orderableQuantity := pos.orderableQuantity()
+		if orderableQuantity < required {
+			_ = pos.hold(orderableQuantity)
+			required -= orderableQuantity
+		} else {
+			_ = pos.hold(required)
+			break
+		}
+	}
+
+	return nil
+}
+
+func (s *stockService) validation(order *stockOrder, now time.Time) error {
+	return s.validatorComponent.isValidStockOrder(order, now, s.stockPositionStore.getAll())
 }

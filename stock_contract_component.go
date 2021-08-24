@@ -8,6 +8,7 @@ func newStockContractComponent() iStockContractComponent {
 
 type iStockContractComponent interface {
 	isContractableTime(executionCondition StockExecutionCondition, now time.Time) bool
+	confirmStockOrderContract(order *stockOrder, price *symbolPrice, now time.Time) *confirmContractResult
 	confirmMarginOrderContract(order *marginOrder, price *symbolPrice, now time.Time) *confirmContractResult
 }
 
@@ -268,12 +269,26 @@ func (c *stockContractComponent) confirmOrderContract(executionCondition StockEx
 	return &confirmContractResult{isContracted: false}
 }
 
-// confirmMarginOrderContract - 信用注文の約定確認し、約定したらどんな約定状態になるのかを返す
-func (c *stockContractComponent) confirmMarginOrderContract(order *marginOrder, price *symbolPrice, now time.Time) *confirmContractResult {
-	// 注文がnil, 価格情報がnil, 注文と価格情報の銘柄が一致しない, 注文が約定可能な状態じゃない のいずれかの場合、約定しない
-	if order == nil || price == nil || order.SymbolCode != price.SymbolCode || !order.OrderStatus.IsContractable() {
+// confirmStockOrderContract - 現物注文の約定確認し、約定したらどんな約定状態になるのかを返す
+func (c *stockContractComponent) confirmStockOrderContract(order *stockOrder, price *symbolPrice, now time.Time) *confirmContractResult {
+	// 注文がnil, 価格情報がnil, 注文と価格情報の銘柄が一致しない, 注文が約定可能な状態じゃない, 約定可能時間でなければ約定しない のいずれかの場合、約定しない
+	if order == nil || price == nil || order.SymbolCode != price.SymbolCode || !order.OrderStatus.IsContractable() || !c.isContractableTime(order.executionCondition(), now) {
 		return &confirmContractResult{isContracted: false}
 	}
 
-	return c.confirmOrderContract(order.executionCondition(), order.Side, order.limitPrice(), order.ConfirmingCount > 0, price, now)
+	res := c.confirmOrderContract(order.executionCondition(), order.Side, order.limitPrice(), order.ConfirmingCount > 0, price, now)
+	order.ConfirmingCount++
+	return res
+}
+
+// confirmMarginOrderContract - 信用注文の約定確認し、約定したらどんな約定状態になるのかを返す
+func (c *stockContractComponent) confirmMarginOrderContract(order *marginOrder, price *symbolPrice, now time.Time) *confirmContractResult {
+	// 注文がnil, 価格情報がnil, 注文と価格情報の銘柄が一致しない, 注文が約定可能な状態じゃない, 約定可能時間でなければ約定しない のいずれかの場合、約定しない
+	if order == nil || price == nil || order.SymbolCode != price.SymbolCode || !order.OrderStatus.IsContractable() || !c.isContractableTime(order.executionCondition(), now) {
+		return &confirmContractResult{isContracted: false}
+	}
+
+	res := c.confirmOrderContract(order.executionCondition(), order.Side, order.limitPrice(), order.ConfirmingCount > 0, price, now)
+	order.ConfirmingCount++
+	return res
 }

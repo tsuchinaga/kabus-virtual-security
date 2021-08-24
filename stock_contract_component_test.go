@@ -9,11 +9,15 @@ import (
 type testStockContractComponent struct {
 	iStockContractComponent
 	isContractableTime1         bool
+	confirmStockOrderContract1  *confirmContractResult
 	confirmMarginOrderContract1 *confirmContractResult
 }
 
 func (t *testStockContractComponent) isContractableTime(StockExecutionCondition, time.Time) bool {
 	return t.isContractableTime1
+}
+func (t *testStockContractComponent) confirmStockOrderContract(*stockOrder, *symbolPrice, time.Time) *confirmContractResult {
+	return t.confirmStockOrderContract1
 }
 func (t *testStockContractComponent) confirmMarginOrderContract(*marginOrder, *symbolPrice, time.Time) *confirmContractResult {
 	return t.confirmMarginOrderContract1
@@ -959,6 +963,55 @@ func Test_stockContractComponent_confirmOrderContract(t *testing.T) {
 			t.Parallel()
 			component := &stockContractComponent{}
 			got := component.confirmOrderContract(test.arg1, test.arg2, test.arg3, test.arg4, test.arg5, test.arg6)
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_stockContractComponent_confirmStockOrderContract(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		arg1 *stockOrder
+		arg2 *symbolPrice
+		arg3 time.Time
+		want *confirmContractResult
+	}{
+		{name: "注文がnilなら約定しない",
+			arg1: nil,
+			want: &confirmContractResult{isContracted: false}},
+		{name: "価格がnilなら約定しない",
+			arg1: &stockOrder{},
+			arg2: nil,
+			want: &confirmContractResult{isContracted: false}},
+		{name: "注文と価格の銘柄が一致しないなら約定しない",
+			arg1: &stockOrder{SymbolCode: "1234"},
+			arg2: &symbolPrice{SymbolCode: "0000"},
+			want: &confirmContractResult{isContracted: false}},
+		{name: "注文が約定可能な状態でないなら約定しない",
+			arg1: &stockOrder{SymbolCode: "1234", OrderStatus: OrderStatusDone},
+			arg2: &symbolPrice{SymbolCode: "1234"},
+			want: &confirmContractResult{isContracted: false}},
+		{name: "confirmOrderContractが呼び出される(未約定)",
+			arg1: &stockOrder{SymbolCode: "1234", OrderStatus: OrderStatusInOrder},
+			arg2: &symbolPrice{SymbolCode: "1234"},
+			arg3: time.Date(2021, 8, 13, 0, 0, 0, 0, time.Local),
+			want: &confirmContractResult{isContracted: false}},
+		{name: "confirmOrderContractが呼び出される(約定)",
+			arg1: &stockOrder{SymbolCode: "1234", OrderStatus: OrderStatusInOrder, Side: SideBuy, ExecutionCondition: StockExecutionConditionMO, OrderQuantity: 1},
+			arg2: &symbolPrice{SymbolCode: "1234", Ask: 1000, AskTime: time.Date(2021, 8, 13, 9, 0, 0, 0, time.Local), kind: PriceKindRegular},
+			arg3: time.Date(2021, 8, 13, 9, 0, 0, 0, time.Local),
+			want: &confirmContractResult{isContracted: true, price: 1000, contractedAt: time.Date(2021, 8, 13, 9, 0, 0, 0, time.Local)}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			component := &stockContractComponent{}
+			got := component.confirmStockOrderContract(test.arg1, test.arg2, test.arg3)
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}

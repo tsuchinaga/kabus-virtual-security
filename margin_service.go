@@ -34,7 +34,6 @@ type iMarginService interface {
 	removeMarginOrderByCode(orderCode string)
 	getMarginPositions() []*marginPosition
 	removeMarginPositionByCode(positionCode string)
-	confirmContract(order *marginOrder, price *symbolPrice, now time.Time) *confirmContractResult
 }
 
 type marginService struct {
@@ -134,7 +133,7 @@ func (s *marginService) exit(order *marginOrder, price *symbolPrice, now time.Ti
 		return NilArgumentError
 	}
 
-	// 約定可能かのチェックし保存
+	// 約定可能かのチェック
 	contractResult := s.stockContractComponent.confirmMarginOrderContract(order, price, now)
 	if !contractResult.isContracted {
 		return nil
@@ -232,36 +231,4 @@ func (s *marginService) getMarginPositions() []*marginPosition {
 
 func (s *marginService) removeMarginPositionByCode(positionCode string) {
 	s.marginPositionStore.removeByCode(positionCode)
-}
-
-func (s *marginService) confirmContract(order *marginOrder, price *symbolPrice, now time.Time) *confirmContractResult {
-	if order == nil || price == nil {
-		return &confirmContractResult{isContracted: false}
-	}
-
-	// 銘柄が同一でなければfalse
-	if order.SymbolCode != price.SymbolCode {
-		return &confirmContractResult{isContracted: false}
-	}
-
-	// 約定確認中は状態を変更されたくないのでロック
-	order.lock()
-	defer order.unlock()
-
-	// 約定可能な注文状態でなければfalse
-	if !order.OrderStatus.IsContractable() {
-		return &confirmContractResult{isContracted: false}
-	}
-
-	// 約定可能時間でなければ約定しない
-	if !s.stockContractComponent.isContractableTime(order.executionCondition(), now) {
-		return &confirmContractResult{isContracted: false}
-	}
-
-	// 執行条件ごとの約定チェック
-	//   ここまできたということは、時間条件などはパスしているということ
-	res := s.stockContractComponent.confirmMarginOrderContract(order, price, now)
-
-	order.ConfirmingCount++
-	return res
 }
