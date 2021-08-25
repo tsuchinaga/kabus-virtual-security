@@ -12,10 +12,8 @@ type testStockService struct {
 	iStockService
 	newOrderCode1                    []string
 	newOrderCodeCount                int
-	entry1                           error
-	entryCount                       int
-	exit1                            error
-	exitCount                        int
+	confirmContract1                 error
+	confirmContractCount             int
 	getStockOrders1                  []*stockOrder
 	getStockOrderByCode1             *stockOrder
 	getStockOrderByCode2             error
@@ -39,14 +37,9 @@ func (t *testStockService) newOrderCode() string {
 	return t.newOrderCode1[t.newOrderCodeCount%len(t.newOrderCode1)]
 }
 
-func (t *testStockService) entry(*stockOrder, *symbolPrice, time.Time) error {
-	t.entryCount++
-	return t.entry1
-}
-
-func (t *testStockService) exit(*stockOrder, *symbolPrice, time.Time) error {
-	t.exitCount++
-	return t.exit1
+func (t *testStockService) confirmContract(*stockOrder, *symbolPrice, time.Time) error {
+	t.confirmContractCount++
+	return t.confirmContract1
 }
 
 func (t *testStockService) getStockOrders() []*stockOrder {
@@ -620,6 +613,44 @@ func Test_stockService_validation(t *testing.T) {
 			t.Parallel()
 			service := &stockService{stockPositionStore: &testStockPositionStore{getAll1: test.getAll}, validatorComponent: &testValidatorComponent{isValidStockOrder1: test.isValidStockOrder}}
 			got := service.validation(nil, time.Time{})
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_stockService_confirmContract(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                      string
+		confirmStockOrderContract *confirmContractResult
+		arg1                      *stockOrder
+		arg2                      *symbolPrice
+		arg3                      time.Time
+		want                      error
+	}{
+		{name: "注文がnilならエラー", arg1: nil, arg2: &symbolPrice{}, want: NilArgumentError},
+		{name: "価格がnilならエラー", arg1: &stockOrder{}, arg2: nil, want: NilArgumentError},
+		{name: "売買方向が買いでも売りでもなければエラー", arg1: &stockOrder{Side: SideUnspecified}, arg2: &symbolPrice{}, want: InvalidSideError},
+		{name: "売買方向が買いならentry",
+			confirmStockOrderContract: &confirmContractResult{isContracted: false},
+			arg1:                      &stockOrder{Side: SideBuy},
+			arg2:                      &symbolPrice{},
+			want:                      nil},
+		{name: "売買方向が売りならexit",
+			confirmStockOrderContract: &confirmContractResult{isContracted: false},
+			arg1:                      &stockOrder{Side: SideSell},
+			arg2:                      &symbolPrice{},
+			want:                      nil},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &stockService{stockContractComponent: &testStockContractComponent{confirmStockOrderContract1: test.confirmStockOrderContract}}
+			got := service.confirmContract(test.arg1, test.arg2, test.arg3)
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}

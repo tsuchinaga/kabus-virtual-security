@@ -54,22 +54,12 @@ func (s *virtualSecurity) RegisterPrice(symbolPrice RegisterPriceRequest) error 
 	// 現物約定確認
 	now := s.clock.now()
 	for _, o := range s.stockService.getStockOrders() {
-		switch o.Side {
-		case SideBuy:
-			_ = s.stockService.entry(o, price, now)
-		case SideSell:
-			_ = s.stockService.exit(o, price, now)
-		}
+		_ = s.stockService.confirmContract(o, price, now)
 	}
 
 	// 信用約定確認
 	for _, o := range s.marginService.getMarginOrders() {
-		switch o.TradeType {
-		case TradeTypeEntry:
-			_ = s.marginService.entry(o, price, now)
-		case TradeTypeExit:
-			_ = s.marginService.exit(o, price, now)
-		}
+		_ = s.marginService.confirmContract(o, price, now)
 	}
 
 	return nil
@@ -110,12 +100,7 @@ func (s *virtualSecurity) StockOrder(order *StockOrderRequest) (*OrderResult, er
 	// 価格情報がNoDataでなければ最初の約定確認処理をする
 	// 注文でエラーがでても使い道がないので捨てる
 	if priceErr != NoDataError {
-		switch order.Side {
-		case SideBuy:
-			_ = s.stockService.entry(o, price, now)
-		case SideSell:
-			_ = s.stockService.exit(o, price, now)
-		}
+		_ = s.stockService.confirmContract(o, price, now)
 	}
 
 	// 注文番号を返す
@@ -239,12 +224,7 @@ func (s *virtualSecurity) MarginOrder(order *MarginOrderRequest) (*OrderResult, 
 	// 価格情報がNoDataでなければ最初の約定確認処理をする
 	// 注文でエラーがでても使い道がないので捨てる
 	if priceErr != NoDataError {
-		switch o.TradeType {
-		case TradeTypeEntry:
-			_ = s.marginService.entry(o, price, now)
-		case TradeTypeExit:
-			_ = s.marginService.exit(o, price, now)
-		}
+		_ = s.marginService.confirmContract(o, price, now)
 	}
 
 	// 注文番号を返す

@@ -23,8 +23,7 @@ func newStockService(
 
 type iStockService interface {
 	toStockOrder(order *StockOrderRequest, now time.Time) *stockOrder
-	entry(order *stockOrder, price *symbolPrice, now time.Time) error
-	exit(order *stockOrder, price *symbolPrice, now time.Time) error
+	confirmContract(order *stockOrder, price *symbolPrice, now time.Time) error
 	getStockOrders() []*stockOrder
 	getStockOrderByCode(orderCode string) (*stockOrder, error)
 	saveStockOrder(order *stockOrder)
@@ -53,6 +52,22 @@ func (s *stockService) newContractCode() string {
 
 func (s *stockService) newPositionCode() string {
 	return "spo-" + s.uuidGenerator.generate()
+}
+
+func (s *stockService) confirmContract(order *stockOrder, price *symbolPrice, now time.Time) error {
+	// 最低限のvalidation
+	if order == nil || price == nil {
+		return NilArgumentError
+	}
+
+	switch order.Side {
+	case SideBuy:
+		return s.entry(order, price, now)
+	case SideSell:
+		return s.exit(order, price, now)
+	default:
+		return InvalidSideError
+	}
 }
 
 func (s *stockService) entry(order *stockOrder, price *symbolPrice, now time.Time) error {

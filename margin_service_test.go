@@ -12,10 +12,8 @@ type testMarginService struct {
 	iMarginService
 	toMarginOrder1              *marginOrder
 	validation1                 error
-	entry1                      error
-	entryCount                  int
-	exit1                       error
-	exitCount                   int
+	confirmContract1            error
+	confirmContractCount        int
 	holdExitOrderPositions1     error
 	holdExitOrderPositionsCount int
 	getMarginOrders1            []*marginOrder
@@ -23,20 +21,15 @@ type testMarginService struct {
 	getMarginOrderByCode2       error
 	saveMarginOrderHistory      []*marginOrder
 	getMarginPositions1         []*marginPosition
-	confirmContract1            *confirmContractResult
 }
 
 func (t *testMarginService) toMarginOrder(*MarginOrderRequest, time.Time) *marginOrder {
 	return t.toMarginOrder1
 }
 func (t *testMarginService) validation(*marginOrder, time.Time) error { return t.validation1 }
-func (t *testMarginService) entry(*marginOrder, *symbolPrice, time.Time) error {
-	t.entryCount++
-	return t.entry1
-}
-func (t *testMarginService) exit(*marginOrder, *symbolPrice, time.Time) error {
-	t.exitCount++
-	return t.exit1
+func (t *testMarginService) confirmContract(*marginOrder, *symbolPrice, time.Time) error {
+	t.confirmContractCount++
+	return t.confirmContract1
 }
 func (t *testMarginService) holdExitOrderPositions(*marginOrder) error {
 	t.holdExitOrderPositionsCount++
@@ -547,6 +540,44 @@ func Test_marginService_holdExitOrderPositions(t *testing.T) {
 			t.Parallel()
 			got := test.service.holdExitOrderPositions(test.arg1)
 			if !errors.Is(got, test.want) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_marginService_confirmContract(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                       string
+		confirmMarginOrderContract *confirmContractResult
+		arg1                       *marginOrder
+		arg2                       *symbolPrice
+		arg3                       time.Time
+		want                       error
+	}{
+		{name: "注文がnilならエラー", arg2: &symbolPrice{}, want: NilArgumentError},
+		{name: "価格がnilならエラー", arg1: &marginOrder{}, want: NilArgumentError},
+		{name: "取引区分がentryでもexitでもなければエラー", arg1: &marginOrder{TradeType: TradeTypeUnspecified}, arg2: &symbolPrice{}, want: InvalidTradeTypeError},
+		{name: "取引区分がentryならentryが叩かれる",
+			confirmMarginOrderContract: &confirmContractResult{isContracted: false},
+			arg1:                       &marginOrder{TradeType: TradeTypeEntry},
+			arg2:                       &symbolPrice{},
+			want:                       nil},
+		{name: "取引区分がexitならexitが叩かれる",
+			confirmMarginOrderContract: &confirmContractResult{isContracted: false},
+			arg1:                       &marginOrder{TradeType: TradeTypeExit},
+			arg2:                       &symbolPrice{},
+			want:                       nil},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &marginService{stockContractComponent: &testStockContractComponent{confirmMarginOrderContract1: test.confirmMarginOrderContract}}
+			got := service.confirmContract(test.arg1, test.arg2, test.arg3)
+			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
 		})

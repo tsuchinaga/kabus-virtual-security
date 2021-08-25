@@ -25,8 +25,7 @@ func newMarginService(
 type iMarginService interface {
 	toMarginOrder(order *MarginOrderRequest, now time.Time) *marginOrder
 	validation(order *marginOrder, now time.Time) error
-	entry(order *marginOrder, price *symbolPrice, now time.Time) error
-	exit(order *marginOrder, price *symbolPrice, now time.Time) error
+	confirmContract(order *marginOrder, price *symbolPrice, now time.Time) error
 	holdExitOrderPositions(order *marginOrder) error
 	getMarginOrders() []*marginOrder
 	getMarginOrderByCode(orderCode string) (*marginOrder, error)
@@ -87,6 +86,22 @@ func (s *marginService) toMarginOrder(order *MarginOrderRequest, now time.Time) 
 
 func (s *marginService) validation(order *marginOrder, now time.Time) error {
 	return s.validatorComponent.isValidMarginOrder(order, now, s.marginPositionStore.getAll())
+}
+
+func (s *marginService) confirmContract(order *marginOrder, price *symbolPrice, now time.Time) error {
+	// 最低限のvalidation
+	if order == nil || price == nil {
+		return NilArgumentError
+	}
+
+	switch order.TradeType {
+	case TradeTypeEntry:
+		return s.entry(order, price, now)
+	case TradeTypeExit:
+		return s.exit(order, price, now)
+	default:
+		return InvalidTradeTypeError
+	}
 }
 
 func (s *marginService) entry(order *marginOrder, price *symbolPrice, now time.Time) error {
