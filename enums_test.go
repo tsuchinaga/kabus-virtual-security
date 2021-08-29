@@ -491,3 +491,28 @@ func Test_StockExecutionCondition_isValid(t *testing.T) {
 		})
 	}
 }
+
+func Test_TradeType_isValid(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		tradeType TradeType
+		want      bool
+	}{
+		{name: "未指定 は無効", tradeType: TradeTypeUnspecified, want: false},
+		{name: "エントリー は有効", tradeType: TradeTypeEntry, want: true},
+		{name: "エグジット は有効", tradeType: TradeTypeExit, want: true},
+		{name: "未定義 は無効", tradeType: TradeType("foo"), want: false},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got := test.tradeType.isValid()
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}

@@ -6,11 +6,6 @@ var (
 	dayStart = time.Date(0, 1, 1, 0, 0, 0, 0, time.Local)
 	dayEnd   = time.Date(0, 1, 2, 0, 0, 0, 0, time.Local).Add(-1 * time.Nanosecond)
 
-	// 約定可能時間
-	stockContractTime = newTimeRanges(
-		newTimeRange(9, 0, 0, 11, 30, 5),
-		newTimeRange(12, 30, 0, 15, 0, 5))
-
 	// 約定可能現値時間
 	contractableStockPriceTime = newTimeRanges(
 		newTimeRange(9, 0, 0, 11, 30, 0),
@@ -20,6 +15,10 @@ var (
 	contractableMorningSessionTime = newTimeRanges(
 		newTimeRange(9, 0, 0, 11, 30, 5))
 
+	// 約定可能な前場ザラバ時間
+	contractableMorningSessionAuctionTime = newTimeRanges(
+		newTimeRange(9, 0, 0, 11, 30, 0))
+
 	// 約定可能な前場引け時間
 	contractableMorningSessionCloseTime = newTimeRanges(
 		newTimeRange(11, 30, 0, 11, 30, 5))
@@ -27,6 +26,10 @@ var (
 	// 約定可能な後場時間
 	contractableAfternoonSessionTime = newTimeRanges(
 		newTimeRange(12, 30, 0, 15, 0, 5))
+
+	// 約定可能な前場ザラバ時間
+	contractableAfternoonSessionAuctionTime = newTimeRanges(
+		newTimeRange(12, 30, 0, 15, 0, 0))
 
 	// 約定可能な後場引け時間
 	contractableAfternoonSessionCloseTime = newTimeRanges(

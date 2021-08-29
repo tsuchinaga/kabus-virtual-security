@@ -27,7 +27,7 @@ type iStockPositionStore interface {
 	getAll() []*stockPosition
 	getByCode(code string) (*stockPosition, error)
 	getBySymbolCode(symbolCode string) ([]*stockPosition, error)
-	add(stockPosition *stockPosition)
+	save(stockPosition *stockPosition)
 	removeByCode(code string)
 }
 
@@ -83,8 +83,12 @@ func (s *stockPositionStore) getBySymbolCode(symbolCode string) ([]*stockPositio
 	return positions, nil
 }
 
-// add - ポジションをストアに追加する
-func (s *stockPositionStore) add(stockPosition *stockPosition) {
+// save - ポジションをストアに追加する
+func (s *stockPositionStore) save(stockPosition *stockPosition) {
+	if stockPosition == nil {
+		return
+	}
+
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 

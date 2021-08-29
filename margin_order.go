@@ -5,19 +5,21 @@ import (
 	"time"
 )
 
-// stockOrder - 現物注文
-type stockOrder struct {
+// marginOrder - 信用注文
+type marginOrder struct {
 	Code               string                  // 注文コード
 	OrderStatus        OrderStatus             // 状態
+	TradeType          TradeType               // 取引区分
 	Side               Side                    // 売買方向
 	ExecutionCondition StockExecutionCondition // 株式執行条件
 	SymbolCode         string                  // 銘柄コード
-	OrderQuantity      float64                 // 注文数量
+	OrderQuantity      float64                 // 注文数量 (複数のポジションを指定してエグジットする場合は、エグジットする合計数量)
 	ContractedQuantity float64                 // 約定数量
 	CanceledQuantity   float64                 // 取消数量
 	LimitPrice         float64                 // 指値価格
 	ExpiredAt          time.Time               // 有効期限
 	StopCondition      *StockStopCondition     // 現物逆指値条件
+	ExitPositionList   []ExitPosition          // エグジットポジションリスト
 	OrderedAt          time.Time               // 注文日時
 	CanceledAt         time.Time               // 取消日時
 	Contracts          []*Contract             // 約定一覧
@@ -27,7 +29,7 @@ type stockOrder struct {
 }
 
 // デバッグなどで必要になったときに使う
-//func (o *stockOrder) String() string {
+//func (o *marginOrder) String() string {
 //	if b, err := json.Marshal(o); err != nil {
 //		return err.Error()
 //	} else {
@@ -35,7 +37,16 @@ type stockOrder struct {
 //	}
 //}
 
-func (o *stockOrder) isDied(now time.Time) bool {
+func (o *marginOrder) lock() {
+	o.mtx.Lock()
+}
+
+func (o *marginOrder) unlock() {
+	o.mtx.Unlock()
+}
+
+// isDied - 約定やキャンセルで終了した注文が一定時間経過して保持する必要がなくなっているかどうか
+func (o *marginOrder) isDied(now time.Time) bool {
 	// 未終了のステータスなら死んでいない
 	if !o.OrderStatus.IsFixed() {
 		return false
@@ -58,21 +69,25 @@ func (o *stockOrder) isDied(now time.Time) bool {
 	return false
 }
 
-func (o *stockOrder) executionCondition() StockExecutionCondition {
+// executionCondition - 逆指値なども加味した、注文の執行条件
+func (o *marginOrder) executionCondition() StockExecutionCondition {
 	if o.ExecutionCondition.IsStop() && o.OrderStatus != OrderStatusWait && o.StopCondition != nil {
 		return o.StopCondition.ExecutionConditionAfterHit
 	}
 	return o.ExecutionCondition
 }
 
-func (o *stockOrder) limitPrice() float64 {
+// limitPrice - 逆指値なども加味した、注文の指値価格
+func (o *marginOrder) limitPrice() float64 {
 	if o.ExecutionCondition.IsStop() && o.OrderStatus != OrderStatusWait && o.StopCondition != nil {
 		return o.StopCondition.LimitPriceAfterHit
 	}
 	return o.LimitPrice
 }
 
-func (o *stockOrder) activate(price *symbolPrice, now time.Time) {
+// activate - 未有効な注文を有効な注文に変える
+//   逆指値のようなトリガーで発動する注文を想定
+func (o *marginOrder) activate(price *symbolPrice, now time.Time) {
 	if price == nil {
 		return
 	}
@@ -113,7 +128,8 @@ func (o *stockOrder) activate(price *symbolPrice, now time.Time) {
 	}
 }
 
-func (o *stockOrder) expired(now time.Time) {
+// expired - 有効期限切れなら注文をキャンセル済みにする
+func (o *marginOrder) expired(now time.Time) {
 	o.mtx.Lock()
 	defer o.mtx.Unlock()
 
@@ -130,7 +146,8 @@ func (o *stockOrder) expired(now time.Time) {
 	}
 }
 
-func (o *stockOrder) contract(contract *Contract) {
+// contract - 約定情報を追加し、約定の進捗に合わせてステータスを更新する
+func (o *marginOrder) contract(contract *Contract) {
 	if contract == nil {
 		return
 	}
@@ -153,7 +170,8 @@ func (o *stockOrder) contract(contract *Contract) {
 	}
 }
 
-func (o *stockOrder) cancel(canceledAt time.Time) {
+// cancel - 注文を取消状態にする
+func (o *marginOrder) cancel(canceledAt time.Time) {
 	o.mtx.Lock()
 	defer o.mtx.Unlock()
 

@@ -270,3 +270,20 @@ func (e ComparisonOperator) CompareFloat64(a, b float64) bool {
 	}
 	return false
 }
+
+// TradeType - 取引区分
+type TradeType string
+
+const (
+	TradeTypeUnspecified TradeType = ""
+	TradeTypeEntry       TradeType = "entry"
+	TradeTypeExit        TradeType = "exit"
+)
+
+func (e TradeType) isValid() bool {
+	switch e {
+	case TradeTypeEntry, TradeTypeExit:
+		return true
+	}
+	return false
+}
