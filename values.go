@@ -108,6 +108,15 @@ type Contract struct {
 	ContractedAt time.Time
 }
 
+// デバッグなどで必要になったときに使う
+//func (c *Contract) String() string {
+//	if b, err := json.Marshal(c); err != nil {
+//		return err.Error()
+//	} else {
+//		return string(b)
+//	}
+//}
+
 // StockPosition - 現物ポジション
 type StockPosition struct {
 	Code               string    // ポジションコード

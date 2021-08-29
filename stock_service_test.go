@@ -84,6 +84,7 @@ func Test_stockService_entry(t *testing.T) {
 		arg2                  *symbolPrice
 		arg3                  time.Time
 		want                  error
+		wantArg1              *stockOrder
 		wantPositionStoreSave []*stockPosition
 	}{
 		{name: "引数1がnilならエラー",
@@ -91,12 +92,14 @@ func Test_stockService_entry(t *testing.T) {
 			arg1:                  nil,
 			arg2:                  &symbolPrice{},
 			want:                  NilArgumentError,
+			wantArg1:              nil,
 			wantPositionStoreSave: nil},
 		{name: "引数2がnilならエラー",
 			stockService:          &stockService{},
 			arg1:                  &stockOrder{},
 			arg2:                  nil,
 			want:                  NilArgumentError,
+			wantArg1:              &stockOrder{},
 			wantPositionStoreSave: nil},
 		{name: "約定チェックで約定していなかったら何もしない",
 			stockService: &stockService{
@@ -104,6 +107,7 @@ func Test_stockService_entry(t *testing.T) {
 			arg1:                  &stockOrder{},
 			arg2:                  &symbolPrice{},
 			want:                  nil,
+			wantArg1:              &stockOrder{},
 			wantPositionStoreSave: nil},
 		{name: "それぞれコードを生成し、注文、ポジションをstoreに保存する",
 			stockService: &stockService{
@@ -123,6 +127,18 @@ func Test_stockService_entry(t *testing.T) {
 			},
 			arg2: &symbolPrice{},
 			want: nil,
+			wantArg1: &stockOrder{
+				Code:               "sor-1",
+				OrderStatus:        OrderStatusDone,
+				SymbolCode:         "1234",
+				Side:               SideBuy,
+				ExecutionCondition: StockExecutionConditionMO,
+				OrderQuantity:      100,
+				ContractedQuantity: 100,
+				OrderedAt:          time.Date(2021, 6, 21, 10, 0, 0, 0, time.Local),
+				Contracts:          []*Contract{{ContractCode: "sco-uuid-1", OrderCode: "sor-1", PositionCode: "spo-uuid-2", Price: 1000, Quantity: 100, ContractedAt: time.Date(2021, 6, 21, 10, 1, 0, 0, time.Local)}},
+				ConfirmingCount:    1,
+			},
 			wantPositionStoreSave: []*stockPosition{
 				{
 					Code:               "spo-uuid-2",
@@ -148,10 +164,12 @@ func Test_stockService_entry(t *testing.T) {
 			test.stockService.stockPositionStore = stockPositionStore
 
 			got := test.stockService.entry(test.arg1, test.arg2, test.arg3)
-			if !errors.Is(got, test.want) || !reflect.DeepEqual(test.wantPositionStoreSave, stockPositionStore.saveHistory) {
-				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(),
-					test.want, test.wantPositionStoreSave,
-					got, stockPositionStore.saveHistory)
+			if !errors.Is(got, test.want) ||
+				!reflect.DeepEqual(test.wantArg1, test.arg1) ||
+				!reflect.DeepEqual(test.wantPositionStoreSave, stockPositionStore.saveHistory) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want, test.wantArg1, test.wantPositionStoreSave,
+					got, test.arg1, stockPositionStore.saveHistory)
 			}
 		})
 	}
@@ -167,34 +185,49 @@ func Test_stockService_exit(t *testing.T) {
 		arg2               *symbolPrice
 		arg3               time.Time
 		want               error
+		wantArg1           *stockOrder
+		wantPositions      []*stockPosition
 	}{
 		{name: "引数1がnilならエラー",
-			stockService: &stockService{},
-			arg1:         nil,
-			arg2:         &symbolPrice{},
-			want:         NilArgumentError},
+			stockService:       &stockService{},
+			stockPositionStore: &testStockPositionStore{},
+			arg1:               nil,
+			arg2:               &symbolPrice{},
+			want:               NilArgumentError,
+			wantArg1:           nil,
+			wantPositions:      nil},
 		{name: "引数2がnilならエラー",
-			stockService: &stockService{},
-			arg1:         &stockOrder{},
-			arg2:         nil,
-			want:         NilArgumentError},
+			stockService:       &stockService{},
+			stockPositionStore: &testStockPositionStore{},
+			arg1:               &stockOrder{},
+			arg2:               nil,
+			want:               NilArgumentError,
+			wantArg1:           &stockOrder{},
+			wantPositions:      nil},
 		{name: "約定チェックで約定していなかったら何もしない",
-			stockService: &stockService{stockContractComponent: &testStockContractComponent{confirmStockOrderContract1: &confirmContractResult{isContracted: false}}},
-			arg1:         &stockOrder{},
-			arg2:         &symbolPrice{},
-			want:         nil},
+			stockService:       &stockService{stockContractComponent: &testStockContractComponent{confirmStockOrderContract1: &confirmContractResult{isContracted: false}}},
+			stockPositionStore: &testStockPositionStore{},
+			arg1:               &stockOrder{},
+			arg2:               &symbolPrice{},
+			want:               nil,
+			wantArg1:           &stockOrder{},
+			wantPositions:      nil},
 		{name: "指定した銘柄のポジション取得に失敗したらエラー",
 			stockService:       &stockService{stockContractComponent: &testStockContractComponent{confirmStockOrderContract1: &confirmContractResult{isContracted: true}}},
 			stockPositionStore: &testStockPositionStore{getBySymbolCode1: nil, getBySymbolCode2: NilArgumentError},
 			arg1:               &stockOrder{},
 			arg2:               &symbolPrice{},
-			want:               NilArgumentError},
+			want:               NilArgumentError,
+			wantArg1:           &stockOrder{},
+			wantPositions:      nil},
 		{name: "注文可能なポジションの総数より注文数が多ければエラー",
 			stockService:       &stockService{stockContractComponent: &testStockContractComponent{confirmStockOrderContract1: &confirmContractResult{isContracted: true}}},
 			stockPositionStore: &testStockPositionStore{getBySymbolCode1: []*stockPosition{{OwnedQuantity: 100}, {OwnedQuantity: 200}, {OwnedQuantity: 300}}},
 			arg1:               &stockOrder{OrderQuantity: 700},
 			arg2:               &symbolPrice{},
-			want:               NotEnoughHoldQuantityError},
+			want:               NotEnoughHoldQuantityError,
+			wantArg1:           &stockOrder{OrderQuantity: 700},
+			wantPositions:      []*stockPosition{{OwnedQuantity: 100}, {OwnedQuantity: 200}, {OwnedQuantity: 300}}},
 		{name: "注文の数量を丁度満たせるよう古いポジションから順にexitする",
 			stockService: &stockService{
 				uuidGenerator:          &testUUIDGenerator{generator1: []string{"uuid-1", "uuid-2", "uuid-3", "uuid-4", "uuid-5"}},
@@ -202,7 +235,21 @@ func Test_stockService_exit(t *testing.T) {
 			stockPositionStore: &testStockPositionStore{getBySymbolCode1: []*stockPosition{{Code: "spo-0", OwnedQuantity: 1000, HoldQuantity: 1000}, {Code: "spo-1", OwnedQuantity: 100}, {Code: "spo-2", OwnedQuantity: 200, HoldQuantity: 100}, {Code: "spo-3", OwnedQuantity: 300}}},
 			arg1:               &stockOrder{Code: "sor-1", OrderQuantity: 400},
 			arg2:               &symbolPrice{},
-			want:               nil},
+			want:               nil,
+			wantArg1: &stockOrder{
+				Code:               "sor-1",
+				OrderStatus:        OrderStatusDone,
+				OrderQuantity:      400,
+				ContractedQuantity: 400,
+				Contracts: []*Contract{{
+					ContractCode: "sco-uuid-1",
+					OrderCode:    "sor-1",
+					PositionCode: "spo-0",
+					Price:        1000,
+					Quantity:     400,
+					ContractedAt: time.Date(2021, 6, 21, 10, 1, 0, 0, time.Local),
+				}}},
+			wantPositions: []*stockPosition{{Code: "spo-0", OwnedQuantity: 600, HoldQuantity: 600}, {Code: "spo-1", OwnedQuantity: 100}, {Code: "spo-2", OwnedQuantity: 200, HoldQuantity: 100}, {Code: "spo-3", OwnedQuantity: 300}}},
 	}
 
 	for _, test := range tests {
@@ -211,8 +258,12 @@ func Test_stockService_exit(t *testing.T) {
 			t.Parallel()
 			test.stockService.stockPositionStore = test.stockPositionStore
 			got := test.stockService.exit(test.arg1, test.arg2, test.arg3)
-			if !errors.Is(got, test.want) {
-				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			if !errors.Is(got, test.want) ||
+				!reflect.DeepEqual(test.wantArg1, test.arg1) ||
+				!reflect.DeepEqual(test.wantPositions, test.stockPositionStore.getBySymbolCode1) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want, test.wantArg1, test.wantPositions,
+					got, test.arg1, test.stockPositionStore.getBySymbolCode1)
 			}
 		})
 	}
