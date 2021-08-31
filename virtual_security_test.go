@@ -215,24 +215,26 @@ func Test_virtualSecurity_CancelStockOrder(t *testing.T) {
 				stockService: &testStockService{}},
 			arg:  nil,
 			want: NilArgumentError},
-		{name: "キャンセル不可な状態の注文ならエラー",
-			security: &virtualSecurity{
-				clock: &testClock{now1: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
-				stockService: &testStockService{
-					getStockOrderByCode1: &stockOrder{Code: "sor_1234", OrderStatus: OrderStatusCanceled},
-					getStockOrderByCode2: nil,
-				}},
-			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
-			want: UncancellableOrderError},
 		{name: "キャンセル可能な注文ならエラーなし",
 			security: &virtualSecurity{
 				clock: &testClock{now1: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
 				stockService: &testStockService{
 					getStockOrderByCode1: &stockOrder{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
 					getStockOrderByCode2: nil,
+					cancelAndRelease1:    nil,
 				}},
 			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
 			want: nil},
+		{name: "キャンセル可能な注文でもキャンセル時にエラーが出ればエラーあり",
+			security: &virtualSecurity{
+				clock: &testClock{now1: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
+				stockService: &testStockService{
+					getStockOrderByCode1: &stockOrder{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
+					getStockOrderByCode2: nil,
+					cancelAndRelease1:    UncancellableOrderError,
+				}},
+			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
+			want: UncancellableOrderError},
 	}
 
 	for _, test := range tests {
@@ -682,24 +684,26 @@ func Test_virtualSecurity_CancelMarginOrder(t *testing.T) {
 				marginService: &testMarginService{}},
 			arg:  nil,
 			want: NilArgumentError},
-		{name: "キャンセル不可な状態の注文ならエラー",
-			security: &virtualSecurity{
-				clock: &testClock{now1: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
-				marginService: &testMarginService{
-					getMarginOrderByCode1: &marginOrder{Code: "sor_1234", OrderStatus: OrderStatusCanceled},
-					getMarginOrderByCode2: nil,
-				}},
-			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
-			want: UncancellableOrderError},
 		{name: "キャンセル可能な注文ならエラーなし",
 			security: &virtualSecurity{
 				clock: &testClock{now1: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
 				marginService: &testMarginService{
 					getMarginOrderByCode1: &marginOrder{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
 					getMarginOrderByCode2: nil,
+					cancelAndRelease1:     nil,
 				}},
 			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
 			want: nil},
+		{name: "キャンセル可能な注文でもキャンセル時にエラーがでたらエラーを返す",
+			security: &virtualSecurity{
+				clock: &testClock{now1: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
+				marginService: &testMarginService{
+					getMarginOrderByCode1: &marginOrder{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
+					getMarginOrderByCode2: nil,
+					cancelAndRelease1:     UncancellableOrderError,
+				}},
+			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
+			want: UncancellableOrderError},
 	}
 
 	for _, test := range tests {

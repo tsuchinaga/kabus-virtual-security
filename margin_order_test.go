@@ -413,24 +413,73 @@ func Test_marginOrder_cancel(t *testing.T) {
 	}
 }
 
-func Test_marginOrder_lock_unlock(t *testing.T) {
+func Test_marginOrder_addHoldPosition(t *testing.T) {
 	t.Parallel()
+	tests := []struct {
+		name  string
+		order *marginOrder
+		arg1  string
+		arg2  float64
+		want  *marginOrder
+	}{
+		{name: "sliceがnilなら空sliceを作ってからappendする",
+			order: &marginOrder{},
+			arg1:  "spo-uuid-01",
+			arg2:  100,
+			want:  &marginOrder{HoldPositions: []*HoldPosition{{PositionCode: "spo-uuid-01", HoldQuantity: 100}}}},
+		{name: "sliceに要素があったら末尾にappendする",
+			order: &marginOrder{HoldPositions: []*HoldPosition{{PositionCode: "spo-uuid-01", HoldQuantity: 100}}},
+			arg1:  "spo-uuid-02",
+			arg2:  1000,
+			want:  &marginOrder{HoldPositions: []*HoldPosition{{PositionCode: "spo-uuid-01", HoldQuantity: 100}, {PositionCode: "spo-uuid-02", HoldQuantity: 1000}}}},
+	}
 
-	order := &marginOrder{OrderQuantity: 1}
-	order.lock()
-	go func() {
-		defer order.unlock()
-		<-time.After(1 * time.Second)
-		order.OrderQuantity = 2
-	}()
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			test.order.addHoldPosition(test.arg1, test.arg2)
+			if !reflect.DeepEqual(test.want, test.order) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, test.order)
+			}
+		})
+	}
+}
 
-	order.lock()
-	order.OrderQuantity = 3
-	order.unlock()
+func Test_marginOrder_addExitPosition(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		order     *marginOrder
+		arg1      string
+		arg2      float64
+		wantOrder *marginOrder
+	}{
+		{name: "注文でHoldしているポジションがnilなら何もしない",
+			order:     &marginOrder{HoldPositions: nil},
+			arg1:      "spo-uuid-01",
+			arg2:      50,
+			wantOrder: &marginOrder{HoldPositions: nil}},
+		{name: "注文でHoldしているポジションと一致しないなら何もしない",
+			order:     &marginOrder{HoldPositions: []*HoldPosition{{PositionCode: "spo-uuid-02", HoldQuantity: 100, ExitQuantity: 100}, {PositionCode: "spo-uuid-03", HoldQuantity: 300, ExitQuantity: 200}}},
+			arg1:      "spo-uuid-01",
+			arg2:      50,
+			wantOrder: &marginOrder{HoldPositions: []*HoldPosition{{PositionCode: "spo-uuid-02", HoldQuantity: 100, ExitQuantity: 100}, {PositionCode: "spo-uuid-03", HoldQuantity: 300, ExitQuantity: 200}}}},
+		{name: "注文でHoldしているポジションをExitした場合、Exit数に加算しておく",
+			order:     &marginOrder{HoldPositions: []*HoldPosition{{PositionCode: "spo-uuid-02", HoldQuantity: 100, ExitQuantity: 100}, {PositionCode: "spo-uuid-03", HoldQuantity: 300, ExitQuantity: 200}}},
+			arg1:      "spo-uuid-03",
+			arg2:      50,
+			wantOrder: &marginOrder{HoldPositions: []*HoldPosition{{PositionCode: "spo-uuid-02", HoldQuantity: 100, ExitQuantity: 100}, {PositionCode: "spo-uuid-03", HoldQuantity: 300, ExitQuantity: 250}}}},
+	}
 
-	want := 3.0
-	got := order.OrderQuantity
-	if !reflect.DeepEqual(want, got) {
-		t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), want, got)
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			test.order.addExitPosition(test.arg1, test.arg2)
+			if !reflect.DeepEqual(test.wantOrder, test.order) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.wantOrder, test.order)
+			}
+		})
 	}
 }

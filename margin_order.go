@@ -25,6 +25,7 @@ type marginOrder struct {
 	Contracts          []*Contract             // 約定一覧
 	ConfirmingCount    int                     // 約定確認回数
 	Message            string                  // メッセージ
+	HoldPositions      []*HoldPosition         // Exit時に拘束しているポジション
 	mtx                sync.Mutex
 }
 
@@ -36,14 +37,6 @@ type marginOrder struct {
 //		return string(b)
 //	}
 //}
-
-func (o *marginOrder) lock() {
-	o.mtx.Lock()
-}
-
-func (o *marginOrder) unlock() {
-	o.mtx.Unlock()
-}
 
 // isDied - 約定やキャンセルで終了した注文が一定時間経過して保持する必要がなくなっているかどうか
 func (o *marginOrder) isDied(now time.Time) bool {
@@ -178,5 +171,33 @@ func (o *marginOrder) cancel(canceledAt time.Time) {
 	if o.OrderStatus.IsCancelable() {
 		o.CanceledAt = canceledAt
 		o.OrderStatus = OrderStatusCanceled
+	}
+}
+
+// addHoldPosition - 注文が拘束したポジションの情報を追加する
+func (o *marginOrder) addHoldPosition(positionCode string, quantity float64) {
+	o.mtx.Lock()
+	defer o.mtx.Unlock()
+
+	if o.HoldPositions == nil {
+		o.HoldPositions = make([]*HoldPosition, 0)
+	}
+
+	o.HoldPositions = append(o.HoldPositions, &HoldPosition{PositionCode: positionCode, HoldQuantity: quantity})
+}
+
+func (o *marginOrder) addExitPosition(positionCode string, quantity float64) {
+	o.mtx.Lock()
+	defer o.mtx.Unlock()
+
+	if o.HoldPositions == nil {
+		return
+	}
+
+	for i, hp := range o.HoldPositions {
+		if hp.PositionCode != positionCode {
+			continue
+		}
+		o.HoldPositions[i].ExitQuantity += quantity
 	}
 }

@@ -23,6 +23,7 @@ type stockOrder struct {
 	Contracts          []*Contract             // 約定一覧
 	ConfirmingCount    int                     // 約定確認回数
 	Message            string                  // メッセージ
+	HoldPositions      []*HoldPosition         // Sell時に拘束しているポジション
 	mtx                sync.Mutex
 }
 
@@ -160,5 +161,33 @@ func (o *stockOrder) cancel(canceledAt time.Time) {
 	if o.OrderStatus.IsCancelable() {
 		o.CanceledAt = canceledAt
 		o.OrderStatus = OrderStatusCanceled
+	}
+}
+
+// addHoldPosition - 注文が拘束したポジションの情報を追加する
+func (o *stockOrder) addHoldPosition(positionCode string, quantity float64) {
+	o.mtx.Lock()
+	defer o.mtx.Unlock()
+
+	if o.HoldPositions == nil {
+		o.HoldPositions = make([]*HoldPosition, 0)
+	}
+
+	o.HoldPositions = append(o.HoldPositions, &HoldPosition{PositionCode: positionCode, HoldQuantity: quantity})
+}
+
+func (o *stockOrder) addExitPosition(positionCode string, quantity float64) {
+	o.mtx.Lock()
+	defer o.mtx.Unlock()
+
+	if o.HoldPositions == nil {
+		return
+	}
+
+	for i, hp := range o.HoldPositions {
+		if hp.PositionCode != positionCode {
+			continue
+		}
+		o.HoldPositions[i].ExitQuantity += quantity
 	}
 }
