@@ -198,3 +198,19 @@ type MarginPosition struct {
 	Price              float64   // 約定価格
 	ContractedAt       time.Time // 約定日時
 }
+
+// HoldPosition - 注文が拘束しているポジションの情報
+type HoldPosition struct {
+	PositionCode string  // ポジションコード
+	HoldQuantity float64 // 拘束数
+	ExitQuantity float64 // 返済数
+}
+
+// デバッグなどで必要になったときに使う
+//func (h *HoldPosition) String() string {
+//	if b, err := json.Marshal(h); err != nil {
+//		return err.Error()
+//	} else {
+//		return string(b)
+//	}
+//}

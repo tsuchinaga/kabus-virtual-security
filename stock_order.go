@@ -23,6 +23,7 @@ type stockOrder struct {
 	Contracts          []*Contract             // 約定一覧
 	ConfirmingCount    int                     // 約定確認回数
 	Message            string                  // メッセージ
+	HoldPositions      []*HoldPosition         // Sell時に拘束しているポジション
 	mtx                sync.Mutex
 }
 
@@ -113,21 +114,16 @@ func (o *stockOrder) activate(price *symbolPrice, now time.Time) {
 	}
 }
 
-func (o *stockOrder) expired(now time.Time) {
+// isExpired - 有効期限切れの注文かのチェック
+func (o *stockOrder) isExpired(now time.Time) bool {
 	o.mtx.Lock()
 	defer o.mtx.Unlock()
 
 	// 有効期限がゼロ値なら有効期限なしで何もしない
 	if o.ExpiredAt.IsZero() {
-		return
+		return false
 	}
-
-	// 期限切れの注文なら状態を更新してfalse
-	if now.After(o.ExpiredAt) {
-		o.CanceledAt = now
-		o.OrderStatus = OrderStatusCanceled
-		o.Message = "expired"
-	}
+	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).After(o.ExpiredAt)
 }
 
 func (o *stockOrder) contract(contract *Contract) {
@@ -160,5 +156,33 @@ func (o *stockOrder) cancel(canceledAt time.Time) {
 	if o.OrderStatus.IsCancelable() {
 		o.CanceledAt = canceledAt
 		o.OrderStatus = OrderStatusCanceled
+	}
+}
+
+// addHoldPosition - 注文が拘束したポジションの情報を追加する
+func (o *stockOrder) addHoldPosition(positionCode string, quantity float64) {
+	o.mtx.Lock()
+	defer o.mtx.Unlock()
+
+	if o.HoldPositions == nil {
+		o.HoldPositions = make([]*HoldPosition, 0)
+	}
+
+	o.HoldPositions = append(o.HoldPositions, &HoldPosition{PositionCode: positionCode, HoldQuantity: quantity})
+}
+
+func (o *stockOrder) addExitPosition(positionCode string, quantity float64) {
+	o.mtx.Lock()
+	defer o.mtx.Unlock()
+
+	if o.HoldPositions == nil {
+		return
+	}
+
+	for i, hp := range o.HoldPositions {
+		if hp.PositionCode != positionCode {
+			continue
+		}
+		o.HoldPositions[i].ExitQuantity += quantity
 	}
 }

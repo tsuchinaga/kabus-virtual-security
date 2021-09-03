@@ -1,6 +1,7 @@
 package virtual_security
 
 import (
+	"fmt"
 	"sync"
 	"time"
 )
@@ -32,6 +33,7 @@ type iStockService interface {
 	removeStockPositionByCode(positionCode string)
 	holdSellOrderPositions(order *stockOrder) error
 	validation(order *stockOrder, now time.Time) error
+	cancelAndRelease(order *stockOrder, now time.Time) error
 }
 
 type stockService struct {
@@ -120,34 +122,17 @@ func (s *stockService) exit(order *stockOrder, price *symbolPrice, now time.Time
 		return nil
 	}
 
-	positions, err := s.stockPositionStore.getBySymbolCode(order.SymbolCode)
-	if err != nil {
-		return err
-	}
-
-	// positionの拘束数が今回返済したいポジションの数より多いかをチェック
-	var totalHoldQuantity float64
-	for _, p := range positions {
-		totalHoldQuantity += p.orderableQuantity()
-	}
-	if totalHoldQuantity < order.OrderQuantity {
-		return NotEnoughHoldQuantityError
-	}
-
-	// 古いポジションから順に返したい全量まで返せるだけ返していく
-	q := order.OrderQuantity
-	for _, p := range positions {
-		exitQuantity := p.HoldQuantity
-		if q < exitQuantity {
-			exitQuantity = q
-		}
-		if exitQuantity <= 0 {
+	// 注文が拘束しているポジションをexitしていく
+	for _, hp := range order.HoldPositions {
+		p, err := s.stockPositionStore.getByCode(hp.PositionCode)
+		if err != nil {
+			// TODO 注文エラーにする
 			continue
 		}
-		q -= exitQuantity
 
 		// TODO exit時にエラーが出る可能性があれば、エラーをコントロールできるようにする
-		_ = p.exit(exitQuantity) // 直前でholdしていて確実にexitできるためerrは捨てられる
+		_ = p.exit(hp.HoldQuantity)
+		order.addExitPosition(p.Code, hp.HoldQuantity) // 注文による返済数に加算しておく
 
 		// 注文に約定情報を追加
 		contractCode := s.newContractCode()
@@ -156,7 +141,7 @@ func (s *stockService) exit(order *stockOrder, price *symbolPrice, now time.Time
 			OrderCode:    order.Code,
 			PositionCode: p.Code,
 			Price:        contractResult.price,
-			Quantity:     exitQuantity,
+			Quantity:     hp.HoldQuantity,
 			ContractedAt: contractResult.contractedAt,
 		})
 	}
@@ -238,9 +223,11 @@ func (s *stockService) holdSellOrderPositions(order *stockOrder) error {
 		orderableQuantity := pos.orderableQuantity()
 		if orderableQuantity < required {
 			_ = pos.hold(orderableQuantity)
+			order.addHoldPosition(pos.Code, orderableQuantity)
 			required -= orderableQuantity
 		} else {
 			_ = pos.hold(required)
+			order.addHoldPosition(pos.Code, required)
 			break
 		}
 	}
@@ -250,4 +237,36 @@ func (s *stockService) holdSellOrderPositions(order *stockOrder) error {
 
 func (s *stockService) validation(order *stockOrder, now time.Time) error {
 	return s.validatorComponent.isValidStockOrder(order, now, s.stockPositionStore.getAll())
+}
+
+func (s *stockService) cancelAndRelease(order *stockOrder, now time.Time) error {
+	if order == nil {
+		return NilArgumentError
+	}
+	if !order.OrderStatus.IsCancelable() {
+		return UncancellableOrderError
+	}
+	order.cancel(now)
+
+	// 売り注文なら拘束したポジションを開放する
+	var res error
+	if order.Side == SideSell {
+		for _, hp := range order.HoldPositions {
+			// Exit済みならスキップ
+			if hp.HoldQuantity-hp.ExitQuantity == 0 {
+				continue
+			}
+			pos, err := s.stockPositionStore.getByCode(hp.PositionCode)
+			if err != nil {
+				res = fmt.Errorf("拘束中の一部のポジションを解放できませんでした: %w", err)
+				continue
+			}
+			if err := pos.release(hp.HoldQuantity - hp.ExitQuantity); err != nil {
+				res = fmt.Errorf("拘束中の一部のポジションを解放できませんでした: %w", err)
+			}
+			hp.HoldQuantity = hp.ExitQuantity
+		}
+	}
+
+	return res
 }

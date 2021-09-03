@@ -21,6 +21,8 @@ type testMarginService struct {
 	getMarginOrderByCode2       error
 	saveMarginOrderHistory      []*marginOrder
 	getMarginPositions1         []*marginPosition
+	cancelAndRelease1           error
+	cancelAndReleaseCount       int
 }
 
 func (t *testMarginService) toMarginOrder(*MarginOrderRequest, time.Time) *marginOrder {
@@ -48,6 +50,10 @@ func (t *testMarginService) saveMarginOrder(order *marginOrder) {
 func (t *testMarginService) removeMarginOrderByCode(string)        {}
 func (t *testMarginService) getMarginPositions() []*marginPosition { return t.getMarginPositions1 }
 func (t *testMarginService) removeMarginPositionByCode(string)     {}
+func (t *testMarginService) cancelAndRelease(*marginOrder, time.Time) error {
+	t.cancelAndReleaseCount++
+	return t.cancelAndRelease1
+}
 
 func Test_marginService_newOrderCode(t *testing.T) {
 	t.Parallel()
@@ -333,11 +339,11 @@ func Test_marginService_exit(t *testing.T) {
 				uuidGenerator:          &testUUIDGenerator{generator1: []string{"01", "02", "03"}}},
 			orderStore:    &testMarginOrderStore{saveHistory: []*marginOrder{}},
 			positionStore: &testMarginPositionStore{getByCode1: &marginPosition{Code: "mpo-01", OwnedQuantity: 100, HoldQuantity: 100}, getByCode2: nil},
-			arg1:          &marginOrder{Code: "mor-01", OrderQuantity: 100, ExitPositionList: []ExitPosition{{PositionCode: "mpo-01", Quantity: 100}}},
+			arg1:          &marginOrder{Code: "mor-01", OrderQuantity: 100, ExitPositionList: []ExitPosition{{PositionCode: "mpo-01", Quantity: 100}}, HoldPositions: []*HoldPosition{{PositionCode: "mpo-01", HoldQuantity: 100}}},
 			arg2:          &symbolPrice{},
 			arg3:          time.Date(2021, 8, 20, 14, 0, 0, 0, time.Local),
 			want:          nil,
-			wantArg1:      &marginOrder{Code: "mor-01", OrderStatus: OrderStatusDone, OrderQuantity: 100, ContractedQuantity: 100, ExitPositionList: []ExitPosition{{PositionCode: "mpo-01", Quantity: 100}}, Contracts: []*Contract{{ContractCode: "mco-01", OrderCode: "mor-01", PositionCode: "mpo-01", Price: 1000, Quantity: 100, ContractedAt: time.Date(2021, 8, 20, 14, 0, 0, 0, time.Local)}}},
+			wantArg1:      &marginOrder{Code: "mor-01", OrderStatus: OrderStatusDone, OrderQuantity: 100, ContractedQuantity: 100, ExitPositionList: []ExitPosition{{PositionCode: "mpo-01", Quantity: 100}}, HoldPositions: []*HoldPosition{{PositionCode: "mpo-01", HoldQuantity: 100, ExitQuantity: 100}}, Contracts: []*Contract{{ContractCode: "mco-01", OrderCode: "mor-01", PositionCode: "mpo-01", Price: 1000, Quantity: 100, ContractedAt: time.Date(2021, 8, 20, 14, 0, 0, 0, time.Local)}}},
 			wantPosition:  &marginPosition{Code: "mpo-01", OwnedQuantity: 0, HoldQuantity: 0}},
 	}
 
@@ -532,42 +538,50 @@ func Test_marginService_holdExitOrderPositions(t *testing.T) {
 		arg1                *marginOrder
 		want                error
 		wantPosition        *marginPosition
+		wantArg1            *marginOrder
 	}{
 		{name: "問題なければエラーなし",
-			marginPositionStore: &testMarginPositionStore{getByCode1: &marginPosition{OwnedQuantity: 100, HoldQuantity: 0}, getByCode2: nil},
+			marginPositionStore: &testMarginPositionStore{getByCode1: &marginPosition{Code: "mpo-01", OwnedQuantity: 100, HoldQuantity: 0}, getByCode2: nil},
 			arg1:                &marginOrder{TradeType: TradeTypeExit, ExitPositionList: []ExitPosition{{PositionCode: "mpo-01", Quantity: 100}}},
 			want:                nil,
-			wantPosition:        &marginPosition{OwnedQuantity: 100, HoldQuantity: 100}},
+			wantPosition:        &marginPosition{Code: "mpo-01", OwnedQuantity: 100, HoldQuantity: 100},
+			wantArg1:            &marginOrder{TradeType: TradeTypeExit, ExitPositionList: []ExitPosition{{PositionCode: "mpo-01", Quantity: 100}}, HoldPositions: []*HoldPosition{{PositionCode: "mpo-01", HoldQuantity: 100}}}},
 		{name: "引数がnilならエラー",
 			marginPositionStore: &testMarginPositionStore{getByCode1: &marginPosition{OwnedQuantity: 100, HoldQuantity: 0}, getByCode2: nil},
 			arg1:                nil,
 			want:                NilArgumentError,
-			wantPosition:        &marginPosition{OwnedQuantity: 100, HoldQuantity: 0}},
+			wantPosition:        &marginPosition{OwnedQuantity: 100, HoldQuantity: 0},
+			wantArg1:            nil},
 		{name: "注文がExit注文でないならエラー",
 			marginPositionStore: &testMarginPositionStore{getByCode1: &marginPosition{OwnedQuantity: 100, HoldQuantity: 0}, getByCode2: nil},
 			arg1:                &marginOrder{TradeType: TradeTypeEntry, ExitPositionList: []ExitPosition{{PositionCode: "mpo-01", Quantity: 100}}},
 			want:                InvalidTradeTypeError,
-			wantPosition:        &marginPosition{OwnedQuantity: 100, HoldQuantity: 0}},
+			wantPosition:        &marginPosition{OwnedQuantity: 100, HoldQuantity: 0},
+			wantArg1:            &marginOrder{TradeType: TradeTypeEntry, ExitPositionList: []ExitPosition{{PositionCode: "mpo-01", Quantity: 100}}}},
 		{name: "Exitポジション一覧がnilならエラー",
 			marginPositionStore: &testMarginPositionStore{getByCode1: &marginPosition{OwnedQuantity: 100, HoldQuantity: 0}, getByCode2: nil},
 			arg1:                &marginOrder{TradeType: TradeTypeExit, ExitPositionList: nil},
 			want:                InvalidExitPositionError,
-			wantPosition:        &marginPosition{OwnedQuantity: 100, HoldQuantity: 0}},
+			wantPosition:        &marginPosition{OwnedQuantity: 100, HoldQuantity: 0},
+			wantArg1:            &marginOrder{TradeType: TradeTypeExit, ExitPositionList: nil}},
 		{name: "Exitポジション一覧が空配列ならエラー",
 			marginPositionStore: &testMarginPositionStore{getByCode1: &marginPosition{OwnedQuantity: 100, HoldQuantity: 0}, getByCode2: nil},
 			arg1:                &marginOrder{TradeType: TradeTypeExit, ExitPositionList: []ExitPosition{}},
 			want:                InvalidExitPositionError,
-			wantPosition:        &marginPosition{OwnedQuantity: 100, HoldQuantity: 0}},
+			wantPosition:        &marginPosition{OwnedQuantity: 100, HoldQuantity: 0},
+			wantArg1:            &marginOrder{TradeType: TradeTypeExit, ExitPositionList: []ExitPosition{}}},
 		{name: "ExitポジションがStoreから取れなければエラー",
 			marginPositionStore: &testMarginPositionStore{getByCode1: nil, getByCode2: NoDataError},
 			arg1:                &marginOrder{TradeType: TradeTypeExit, ExitPositionList: []ExitPosition{{PositionCode: "mpo-01", Quantity: 100}}},
 			want:                NoDataError,
-			wantPosition:        nil},
+			wantPosition:        nil,
+			wantArg1:            &marginOrder{TradeType: TradeTypeExit, ExitPositionList: []ExitPosition{{PositionCode: "mpo-01", Quantity: 100}}}},
 		{name: "Storeから取れたポジションをhold出来なければエラー",
 			marginPositionStore: &testMarginPositionStore{getByCode1: &marginPosition{OwnedQuantity: 100, HoldQuantity: 50}, getByCode2: nil},
 			arg1:                &marginOrder{TradeType: TradeTypeExit, ExitPositionList: []ExitPosition{{PositionCode: "mpo-01", Quantity: 100}}},
 			want:                NotEnoughOwnedQuantityError,
-			wantPosition:        &marginPosition{OwnedQuantity: 100, HoldQuantity: 50}},
+			wantPosition:        &marginPosition{OwnedQuantity: 100, HoldQuantity: 50},
+			wantArg1:            &marginOrder{TradeType: TradeTypeExit, ExitPositionList: []ExitPosition{{PositionCode: "mpo-01", Quantity: 100}}}},
 	}
 
 	for _, test := range tests {
@@ -576,8 +590,10 @@ func Test_marginService_holdExitOrderPositions(t *testing.T) {
 			t.Parallel()
 			service := &marginService{marginPositionStore: test.marginPositionStore}
 			got := service.holdExitOrderPositions(test.arg1)
-			if !errors.Is(got, test.want) || !reflect.DeepEqual(test.wantPosition, test.marginPositionStore.getByCode1) {
-				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want, test.want, got, test.marginPositionStore.getByCode1)
+			if !errors.Is(got, test.want) ||
+				!reflect.DeepEqual(test.wantPosition, test.marginPositionStore.getByCode1) ||
+				!reflect.DeepEqual(test.wantArg1, test.arg1) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(), test.want, test.wantPosition, test.wantArg1, got, test.marginPositionStore.getByCode1, test.arg1)
 			}
 		})
 	}
@@ -616,6 +632,85 @@ func Test_marginService_confirmContract(t *testing.T) {
 			got := service.confirmContract(test.arg1, test.arg2, test.arg3)
 			if !reflect.DeepEqual(test.want, got) {
 				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
+			}
+		})
+	}
+}
+
+func Test_marginService_cancelAndRelease(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name                string
+		marginPositionStore *testMarginPositionStore
+		arg1                *marginOrder
+		arg2                time.Time
+		want                error
+		wantArg1            *marginOrder
+		wantPosition        *marginPosition
+	}{
+		{name: "引数がnilならエラー",
+			marginPositionStore: &testMarginPositionStore{},
+			arg1:                nil,
+			arg2:                time.Date(2021, 8, 31, 14, 0, 0, 0, time.Local),
+			want:                NilArgumentError,
+			wantArg1:            nil,
+			wantPosition:        nil},
+		{name: "キャンセル可能な状態じゃなければエラー",
+			marginPositionStore: &testMarginPositionStore{},
+			arg1:                &marginOrder{OrderStatus: OrderStatusCanceled},
+			arg2:                time.Date(2021, 8, 31, 14, 0, 0, 0, time.Local),
+			want:                UncancellableOrderError,
+			wantArg1:            &marginOrder{OrderStatus: OrderStatusCanceled},
+			wantPosition:        nil},
+		{name: "注文がExitでなければ注文の状態だけ更新して終了",
+			marginPositionStore: &testMarginPositionStore{},
+			arg1:                &marginOrder{TradeType: TradeTypeEntry, OrderStatus: OrderStatusInOrder},
+			arg2:                time.Date(2021, 8, 31, 14, 0, 0, 0, time.Local),
+			want:                nil,
+			wantArg1:            &marginOrder{TradeType: TradeTypeEntry, OrderStatus: OrderStatusCanceled, CanceledAt: time.Date(2021, 8, 31, 14, 0, 0, 0, time.Local)},
+			wantPosition:        nil},
+		{name: "注文がExitでも拘束中のポジションがなければ何もしない",
+			marginPositionStore: &testMarginPositionStore{},
+			arg1:                &marginOrder{TradeType: TradeTypeExit, OrderStatus: OrderStatusInOrder, ExitPositionList: []ExitPosition{{PositionCode: "mpo-uuid-01", Quantity: 100}}, HoldPositions: []*HoldPosition{{PositionCode: "mpo-uuid-01", HoldQuantity: 100, ExitQuantity: 100}}},
+			arg2:                time.Date(2021, 8, 31, 14, 0, 0, 0, time.Local),
+			want:                nil,
+			wantArg1:            &marginOrder{TradeType: TradeTypeExit, OrderStatus: OrderStatusCanceled, CanceledAt: time.Date(2021, 8, 31, 14, 0, 0, 0, time.Local), ExitPositionList: []ExitPosition{{PositionCode: "mpo-uuid-01", Quantity: 100}}, HoldPositions: []*HoldPosition{{PositionCode: "mpo-uuid-01", HoldQuantity: 100, ExitQuantity: 100}}},
+			wantPosition:        nil},
+		{name: "注文がExitで拘束中のポジションがあれば解放し、ポジションの拘束数を解放する",
+			marginPositionStore: &testMarginPositionStore{getByCode1: &marginPosition{OwnedQuantity: 70, HoldQuantity: 70}},
+			arg1:                &marginOrder{TradeType: TradeTypeExit, OrderStatus: OrderStatusInOrder, ExitPositionList: []ExitPosition{{PositionCode: "mpo-uuid-01", Quantity: 100}}, HoldPositions: []*HoldPosition{{PositionCode: "mpo-uuid-01", HoldQuantity: 100, ExitQuantity: 30}}},
+			arg2:                time.Date(2021, 8, 31, 14, 0, 0, 0, time.Local),
+			want:                nil,
+			wantArg1:            &marginOrder{TradeType: TradeTypeExit, OrderStatus: OrderStatusCanceled, CanceledAt: time.Date(2021, 8, 31, 14, 0, 0, 0, time.Local), ExitPositionList: []ExitPosition{{PositionCode: "mpo-uuid-01", Quantity: 100}}, HoldPositions: []*HoldPosition{{PositionCode: "mpo-uuid-01", HoldQuantity: 30, ExitQuantity: 30}}},
+			wantPosition:        &marginPosition{OwnedQuantity: 70, HoldQuantity: 0}},
+		{name: "注文がExitで拘束中のポジションがなければエラー",
+			marginPositionStore: &testMarginPositionStore{getByCode2: NoDataError},
+			arg1:                &marginOrder{TradeType: TradeTypeExit, OrderStatus: OrderStatusInOrder, ExitPositionList: []ExitPosition{{PositionCode: "mpo-uuid-01", Quantity: 100}}, HoldPositions: []*HoldPosition{{PositionCode: "mpo-uuid-01", HoldQuantity: 100, ExitQuantity: 30}}},
+			arg2:                time.Date(2021, 8, 31, 14, 0, 0, 0, time.Local),
+			want:                NoDataError,
+			wantArg1:            &marginOrder{TradeType: TradeTypeExit, OrderStatus: OrderStatusCanceled, CanceledAt: time.Date(2021, 8, 31, 14, 0, 0, 0, time.Local), ExitPositionList: []ExitPosition{{PositionCode: "mpo-uuid-01", Quantity: 100}}, HoldPositions: []*HoldPosition{{PositionCode: "mpo-uuid-01", HoldQuantity: 100, ExitQuantity: 30}}},
+			wantPosition:        nil},
+		{name: "注文がExitで拘束中のポジションがあっても、releaseに失敗したらエラーを返す",
+			marginPositionStore: &testMarginPositionStore{getByCode1: &marginPosition{OwnedQuantity: 70, HoldQuantity: 0}},
+			arg1:                &marginOrder{TradeType: TradeTypeExit, OrderStatus: OrderStatusInOrder, ExitPositionList: []ExitPosition{{PositionCode: "mpo-uuid-01", Quantity: 100}}, HoldPositions: []*HoldPosition{{PositionCode: "mpo-uuid-01", HoldQuantity: 100, ExitQuantity: 30}}},
+			arg2:                time.Date(2021, 8, 31, 14, 0, 0, 0, time.Local),
+			want:                NotEnoughHoldQuantityError,
+			wantArg1:            &marginOrder{TradeType: TradeTypeExit, OrderStatus: OrderStatusCanceled, CanceledAt: time.Date(2021, 8, 31, 14, 0, 0, 0, time.Local), ExitPositionList: []ExitPosition{{PositionCode: "mpo-uuid-01", Quantity: 100}}, HoldPositions: []*HoldPosition{{PositionCode: "mpo-uuid-01", HoldQuantity: 30, ExitQuantity: 30}}},
+			wantPosition:        &marginPosition{OwnedQuantity: 70, HoldQuantity: 0}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			service := &marginService{marginPositionStore: test.marginPositionStore}
+			got := service.cancelAndRelease(test.arg1, test.arg2)
+			if !errors.Is(got, test.want) ||
+				!reflect.DeepEqual(test.wantArg1, test.arg1) ||
+				!reflect.DeepEqual(test.wantPosition, test.marginPositionStore.getByCode1) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
+					test.want, test.wantArg1, test.wantPosition,
+					got, test.arg1, test.marginPositionStore.getByCode1)
 			}
 		})
 	}

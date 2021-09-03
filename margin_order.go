@@ -25,6 +25,7 @@ type marginOrder struct {
 	Contracts          []*Contract             // 約定一覧
 	ConfirmingCount    int                     // 約定確認回数
 	Message            string                  // メッセージ
+	HoldPositions      []*HoldPosition         // Exit時に拘束しているポジション
 	mtx                sync.Mutex
 }
 
@@ -36,14 +37,6 @@ type marginOrder struct {
 //		return string(b)
 //	}
 //}
-
-func (o *marginOrder) lock() {
-	o.mtx.Lock()
-}
-
-func (o *marginOrder) unlock() {
-	o.mtx.Unlock()
-}
 
 // isDied - 約定やキャンセルで終了した注文が一定時間経過して保持する必要がなくなっているかどうか
 func (o *marginOrder) isDied(now time.Time) bool {
@@ -128,22 +121,16 @@ func (o *marginOrder) activate(price *symbolPrice, now time.Time) {
 	}
 }
 
-// expired - 有効期限切れなら注文をキャンセル済みにする
-func (o *marginOrder) expired(now time.Time) {
+// isExpired - 有効期限切れの注文かのチェック
+func (o *marginOrder) isExpired(now time.Time) bool {
 	o.mtx.Lock()
 	defer o.mtx.Unlock()
 
 	// 有効期限がゼロ値なら有効期限なしで何もしない
 	if o.ExpiredAt.IsZero() {
-		return
+		return false
 	}
-
-	// 期限切れの注文なら状態を更新してfalse
-	if now.After(o.ExpiredAt) {
-		o.CanceledAt = now
-		o.OrderStatus = OrderStatusCanceled
-		o.Message = "expired"
-	}
+	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).After(o.ExpiredAt)
 }
 
 // contract - 約定情報を追加し、約定の進捗に合わせてステータスを更新する
@@ -178,5 +165,33 @@ func (o *marginOrder) cancel(canceledAt time.Time) {
 	if o.OrderStatus.IsCancelable() {
 		o.CanceledAt = canceledAt
 		o.OrderStatus = OrderStatusCanceled
+	}
+}
+
+// addHoldPosition - 注文が拘束したポジションの情報を追加する
+func (o *marginOrder) addHoldPosition(positionCode string, quantity float64) {
+	o.mtx.Lock()
+	defer o.mtx.Unlock()
+
+	if o.HoldPositions == nil {
+		o.HoldPositions = make([]*HoldPosition, 0)
+	}
+
+	o.HoldPositions = append(o.HoldPositions, &HoldPosition{PositionCode: positionCode, HoldQuantity: quantity})
+}
+
+func (o *marginOrder) addExitPosition(positionCode string, quantity float64) {
+	o.mtx.Lock()
+	defer o.mtx.Unlock()
+
+	if o.HoldPositions == nil {
+		return
+	}
+
+	for i, hp := range o.HoldPositions {
+		if hp.PositionCode != positionCode {
+			continue
+		}
+		o.HoldPositions[i].ExitQuantity += quantity
 	}
 }

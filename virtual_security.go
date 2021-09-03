@@ -118,12 +118,7 @@ func (s *virtualSecurity) CancelStockOrder(cancelOrder *CancelOrderRequest) erro
 		return fmt.Errorf("not found stock order(code: %s), %w", cancelOrder.OrderCode, err)
 	}
 
-	if !order.OrderStatus.IsCancelable() {
-		return UncancellableOrderError
-	}
-
-	order.cancel(s.clock.now())
-	return nil
+	return s.stockService.cancelAndRelease(order, s.clock.now())
 }
 
 // StockOrders - 現物注文一覧
@@ -134,6 +129,10 @@ func (s *virtualSecurity) StockOrders() ([]*StockOrder, error) {
 	res := make([]*StockOrder, len(orders))
 	i := 0
 	for _, o := range orders {
+		// 有効期限切れの注文があれば更新しておく
+		if o.isExpired(now) {
+			_ = s.stockService.cancelAndRelease(o, now)
+		}
 		if o.isDied(now) {
 			s.stockService.removeStockOrderByCode(o.Code)
 			res = res[:len(res)-1]
@@ -242,12 +241,7 @@ func (s *virtualSecurity) CancelMarginOrder(cancelOrder *CancelOrderRequest) err
 		return fmt.Errorf("not found margin order(code: %s), %w", cancelOrder.OrderCode, err)
 	}
 
-	if !order.OrderStatus.IsCancelable() {
-		return UncancellableOrderError
-	}
-
-	order.cancel(s.clock.now())
-	return nil
+	return s.marginService.cancelAndRelease(order, s.clock.now())
 }
 
 // MarginOrders - 信用注文一覧
@@ -258,6 +252,10 @@ func (s *virtualSecurity) MarginOrders() ([]*MarginOrder, error) {
 	res := make([]*MarginOrder, len(orders))
 	i := 0
 	for _, o := range orders {
+		// 有効期限切れの注文があれば更新しておく
+		if o.isExpired(now) {
+			_ = s.marginService.cancelAndRelease(o, now)
+		}
 		if o.isDied(now) {
 			s.marginService.removeMarginOrderByCode(o.Code)
 			res = res[:len(res)-1]

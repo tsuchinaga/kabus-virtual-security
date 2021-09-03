@@ -33,6 +33,7 @@ type iMarginService interface {
 	removeMarginOrderByCode(orderCode string)
 	getMarginPositions() []*marginPosition
 	removeMarginPositionByCode(positionCode string)
+	cancelAndRelease(order *marginOrder, now time.Time) error
 }
 
 type marginService struct {
@@ -173,6 +174,7 @@ func (s *marginService) exit(order *marginOrder, price *symbolPrice, now time.Ti
 		// ポジションの保有数量を返済する
 		// TODO 先にexit可能かのチェックをしているから基本的にエラーは無視できるけど、必要ならエラーチェックを追加する
 		_ = p.exit(ep.Quantity)
+		order.addExitPosition(p.Code, ep.Quantity) // 注文による返済数に加算しておく
 
 		// 注文に約定情報を追加
 		contractCode := s.newContractCode()
@@ -219,6 +221,7 @@ func (s *marginService) holdExitOrderPositions(order *marginOrder) error {
 	for i, exit := range order.ExitPositionList {
 		pos := posList[i]
 		_ = pos.hold(exit.Quantity)
+		order.addHoldPosition(pos.Code, exit.Quantity)
 	}
 
 	return nil
@@ -246,4 +249,36 @@ func (s *marginService) getMarginPositions() []*marginPosition {
 
 func (s *marginService) removeMarginPositionByCode(positionCode string) {
 	s.marginPositionStore.removeByCode(positionCode)
+}
+
+func (s *marginService) cancelAndRelease(order *marginOrder, now time.Time) error {
+	if order == nil {
+		return NilArgumentError
+	}
+	if !order.OrderStatus.IsCancelable() {
+		return UncancellableOrderError
+	}
+	order.cancel(now)
+
+	// 売り注文なら拘束したポジションを開放する
+	var res error
+	if order.TradeType == TradeTypeExit {
+		for _, hp := range order.HoldPositions {
+			// Exit済みならスキップ
+			if hp.HoldQuantity-hp.ExitQuantity == 0 {
+				continue
+			}
+			pos, err := s.marginPositionStore.getByCode(hp.PositionCode)
+			if err != nil {
+				res = fmt.Errorf("拘束中の一部のポジションを解放できませんでした: %w", err)
+				continue
+			}
+			if err := pos.release(hp.HoldQuantity - hp.ExitQuantity); err != nil {
+				res = fmt.Errorf("拘束中の一部のポジションを解放できませんでした: %w", err)
+			}
+			hp.HoldQuantity = hp.ExitQuantity
+		}
+	}
+
+	return res
 }

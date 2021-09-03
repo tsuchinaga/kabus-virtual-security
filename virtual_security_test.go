@@ -10,42 +10,44 @@ import (
 func Test_virtualSecurity_StockOrders(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name     string
-		security virtualSecurity
-		want1    []*StockOrder
-		want2    error
+		name                      string
+		security                  virtualSecurity
+		service                   *testStockService
+		want1                     []*StockOrder
+		want2                     error
+		wantCancelAndReleaseCount int
 	}{
 		{name: "storeに注文がなければ空配列",
 			security: virtualSecurity{
-				clock:        &testClock{now1: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
-				stockService: &testStockService{getStockOrders1: []*stockOrder{}},
+				clock: &testClock{now1: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
 			},
-			want1: []*StockOrder{},
-			want2: nil},
+			service: &testStockService{getStockOrders1: []*stockOrder{}},
+			want1:   []*StockOrder{},
+			want2:   nil},
 		{name: "storeにある注文をStockOrderに入れ替えて返す",
 			security: virtualSecurity{
 				clock: &testClock{now1: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
-				stockService: &testStockService{getStockOrders1: []*stockOrder{
-					{
-						Code:               "sor_1234",
-						OrderStatus:        OrderStatusPart,
-						Side:               SideBuy,
-						ExecutionCondition: StockExecutionConditionMO,
-						SymbolCode:         "1234",
-						OrderQuantity:      300,
-						ContractedQuantity: 100,
-						CanceledQuantity:   0,
-						LimitPrice:         0,
-						ExpiredAt:          time.Date(2021, 6, 14, 15, 0, 0, 0, time.Local),
-						StopCondition:      nil,
-						OrderedAt:          time.Date(2021, 6, 14, 9, 0, 0, 0, time.Local),
-						CanceledAt:         time.Time{},
-						Contracts:          []*Contract{},
-						ConfirmingCount:    20,
-						Message:            "",
-					},
-				}},
 			},
+			service: &testStockService{getStockOrders1: []*stockOrder{
+				{
+					Code:               "sor_1234",
+					OrderStatus:        OrderStatusPart,
+					Side:               SideBuy,
+					ExecutionCondition: StockExecutionConditionMO,
+					SymbolCode:         "1234",
+					OrderQuantity:      300,
+					ContractedQuantity: 100,
+					CanceledQuantity:   0,
+					LimitPrice:         0,
+					ExpiredAt:          time.Date(2021, 6, 15, 15, 0, 0, 0, time.Local),
+					StopCondition:      nil,
+					OrderedAt:          time.Date(2021, 6, 15, 9, 0, 0, 0, time.Local),
+					CanceledAt:         time.Time{},
+					Contracts:          []*Contract{},
+					ConfirmingCount:    20,
+					Message:            "",
+				},
+			}},
 			want1: []*StockOrder{
 				{
 					Code:               "sor_1234",
@@ -57,9 +59,9 @@ func Test_virtualSecurity_StockOrders(t *testing.T) {
 					ContractedQuantity: 100,
 					CanceledQuantity:   0,
 					LimitPrice:         0,
-					ExpiredAt:          time.Date(2021, 6, 14, 15, 0, 0, 0, time.Local),
+					ExpiredAt:          time.Date(2021, 6, 15, 15, 0, 0, 0, time.Local),
 					StopCondition:      nil,
-					OrderedAt:          time.Date(2021, 6, 14, 9, 0, 0, 0, time.Local),
+					OrderedAt:          time.Date(2021, 6, 15, 9, 0, 0, 0, time.Local),
 					CanceledAt:         time.Time{},
 					Contracts:          []*Contract{},
 					Message:            "",
@@ -69,12 +71,12 @@ func Test_virtualSecurity_StockOrders(t *testing.T) {
 		{name: "storeに複数注文があれば全部返す",
 			security: virtualSecurity{
 				clock: &testClock{now1: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
-				stockService: &testStockService{getStockOrders1: []*stockOrder{
-					{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
-					{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
-					{Code: "sor_3456", OrderStatus: OrderStatusInOrder},
-				}},
 			},
+			service: &testStockService{getStockOrders1: []*stockOrder{
+				{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
+				{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
+				{Code: "sor_3456", OrderStatus: OrderStatusInOrder},
+			}},
 			want1: []*StockOrder{
 				{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
 				{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
@@ -84,25 +86,42 @@ func Test_virtualSecurity_StockOrders(t *testing.T) {
 		{name: "storeにある注文が死んだ注文なら返さない",
 			security: virtualSecurity{
 				clock: &testClock{now1: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
-				stockService: &testStockService{getStockOrders1: []*stockOrder{
-					{Code: "sor_1234", OrderStatus: OrderStatusDone},
-					{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
-					{Code: "sor_3456", OrderStatus: OrderStatusCanceled},
-				}},
 			},
+			service: &testStockService{getStockOrders1: []*stockOrder{
+				{Code: "sor_1234", OrderStatus: OrderStatusDone},
+				{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
+				{Code: "sor_3456", OrderStatus: OrderStatusCanceled},
+			}},
 			want1: []*StockOrder{
 				{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
 			},
 			want2: nil},
+		{name: "storeにある注文が有効期限切れになっていたらcancelAndReleaseを通す",
+			security: virtualSecurity{
+				clock: &testClock{now1: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
+			},
+			service: &testStockService{getStockOrders1: []*stockOrder{
+				{Code: "sor_1234", OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 14, 0, 0, 0, 0, time.Local)},
+				{Code: "sor_2345", OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 15, 0, 0, 0, 0, time.Local)},
+				{Code: "sor_3456", OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 16, 0, 0, 0, 0, time.Local)},
+			}},
+			want1: []*StockOrder{
+				{Code: "sor_1234", OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 14, 0, 0, 0, 0, time.Local)},
+				{Code: "sor_2345", OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 15, 0, 0, 0, 0, time.Local)},
+				{Code: "sor_3456", OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 16, 0, 0, 0, 0, time.Local)},
+			},
+			want2:                     nil,
+			wantCancelAndReleaseCount: 1},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
+			test.security.stockService = test.service
 			got1, got2 := test.security.StockOrders()
-			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
-				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
+			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) || test.wantCancelAndReleaseCount != test.service.cancelAndReleaseCount {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(), test.want1, test.want2, test.wantCancelAndReleaseCount, got1, got2, test.service.cancelAndReleaseCount)
 			}
 		})
 	}
@@ -215,24 +234,26 @@ func Test_virtualSecurity_CancelStockOrder(t *testing.T) {
 				stockService: &testStockService{}},
 			arg:  nil,
 			want: NilArgumentError},
-		{name: "キャンセル不可な状態の注文ならエラー",
-			security: &virtualSecurity{
-				clock: &testClock{now1: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
-				stockService: &testStockService{
-					getStockOrderByCode1: &stockOrder{Code: "sor_1234", OrderStatus: OrderStatusCanceled},
-					getStockOrderByCode2: nil,
-				}},
-			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
-			want: UncancellableOrderError},
 		{name: "キャンセル可能な注文ならエラーなし",
 			security: &virtualSecurity{
 				clock: &testClock{now1: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
 				stockService: &testStockService{
 					getStockOrderByCode1: &stockOrder{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
 					getStockOrderByCode2: nil,
+					cancelAndRelease1:    nil,
 				}},
 			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
 			want: nil},
+		{name: "キャンセル可能な注文でもキャンセル時にエラーが出ればエラーあり",
+			security: &virtualSecurity{
+				clock: &testClock{now1: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
+				stockService: &testStockService{
+					getStockOrderByCode1: &stockOrder{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
+					getStockOrderByCode2: nil,
+					cancelAndRelease1:    UncancellableOrderError,
+				}},
+			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
+			want: UncancellableOrderError},
 	}
 
 	for _, test := range tests {
@@ -477,42 +498,44 @@ func Test_NewVirtualSecurity(t *testing.T) {
 func Test_virtualSecurity_MarginOrders(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name     string
-		security virtualSecurity
-		want1    []*MarginOrder
-		want2    error
+		name                      string
+		security                  virtualSecurity
+		marginService             *testMarginService
+		want1                     []*MarginOrder
+		want2                     error
+		wantCancelAndReleaseCount int
 	}{
 		{name: "storeに注文がなければ空配列",
 			security: virtualSecurity{
-				clock:         &testClock{now1: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
-				marginService: &testMarginService{getMarginOrders1: []*marginOrder{}},
+				clock: &testClock{now1: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
 			},
-			want1: []*MarginOrder{},
-			want2: nil},
+			marginService: &testMarginService{getMarginOrders1: []*marginOrder{}},
+			want1:         []*MarginOrder{},
+			want2:         nil},
 		{name: "storeにある注文をMarginOrderに入れ替えて返す",
 			security: virtualSecurity{
 				clock: &testClock{now1: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
-				marginService: &testMarginService{getMarginOrders1: []*marginOrder{
-					{
-						Code:               "sor_1234",
-						OrderStatus:        OrderStatusPart,
-						Side:               SideBuy,
-						ExecutionCondition: StockExecutionConditionMO,
-						SymbolCode:         "1234",
-						OrderQuantity:      300,
-						ContractedQuantity: 100,
-						CanceledQuantity:   0,
-						LimitPrice:         0,
-						ExpiredAt:          time.Date(2021, 6, 14, 15, 0, 0, 0, time.Local),
-						StopCondition:      nil,
-						OrderedAt:          time.Date(2021, 6, 14, 9, 0, 0, 0, time.Local),
-						CanceledAt:         time.Time{},
-						Contracts:          []*Contract{},
-						ConfirmingCount:    20,
-						Message:            "",
-					},
-				}},
 			},
+			marginService: &testMarginService{getMarginOrders1: []*marginOrder{
+				{
+					Code:               "sor_1234",
+					OrderStatus:        OrderStatusPart,
+					Side:               SideBuy,
+					ExecutionCondition: StockExecutionConditionMO,
+					SymbolCode:         "1234",
+					OrderQuantity:      300,
+					ContractedQuantity: 100,
+					CanceledQuantity:   0,
+					LimitPrice:         0,
+					ExpiredAt:          time.Date(2021, 6, 15, 15, 0, 0, 0, time.Local),
+					StopCondition:      nil,
+					OrderedAt:          time.Date(2021, 6, 15, 9, 0, 0, 0, time.Local),
+					CanceledAt:         time.Time{},
+					Contracts:          []*Contract{},
+					ConfirmingCount:    20,
+					Message:            "",
+				},
+			}},
 			want1: []*MarginOrder{
 				{
 					Code:               "sor_1234",
@@ -524,9 +547,9 @@ func Test_virtualSecurity_MarginOrders(t *testing.T) {
 					ContractedQuantity: 100,
 					CanceledQuantity:   0,
 					LimitPrice:         0,
-					ExpiredAt:          time.Date(2021, 6, 14, 15, 0, 0, 0, time.Local),
+					ExpiredAt:          time.Date(2021, 6, 15, 15, 0, 0, 0, time.Local),
 					StopCondition:      nil,
-					OrderedAt:          time.Date(2021, 6, 14, 9, 0, 0, 0, time.Local),
+					OrderedAt:          time.Date(2021, 6, 15, 9, 0, 0, 0, time.Local),
 					CanceledAt:         time.Time{},
 					Contracts:          []*Contract{},
 					Message:            "",
@@ -536,12 +559,12 @@ func Test_virtualSecurity_MarginOrders(t *testing.T) {
 		{name: "storeに複数注文があれば全部返す",
 			security: virtualSecurity{
 				clock: &testClock{now1: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
-				marginService: &testMarginService{getMarginOrders1: []*marginOrder{
-					{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
-					{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
-					{Code: "sor_3456", OrderStatus: OrderStatusInOrder},
-				}},
 			},
+			marginService: &testMarginService{getMarginOrders1: []*marginOrder{
+				{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
+				{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
+				{Code: "sor_3456", OrderStatus: OrderStatusInOrder},
+			}},
 			want1: []*MarginOrder{
 				{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
 				{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
@@ -551,24 +574,41 @@ func Test_virtualSecurity_MarginOrders(t *testing.T) {
 		{name: "storeにある注文が死んだ注文なら返さない",
 			security: virtualSecurity{
 				clock: &testClock{now1: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
-				marginService: &testMarginService{getMarginOrders1: []*marginOrder{
-					{Code: "sor_1234", OrderStatus: OrderStatusDone},
-					{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
-					{Code: "sor_3456", OrderStatus: OrderStatusCanceled},
-				}},
 			},
+			marginService: &testMarginService{getMarginOrders1: []*marginOrder{
+				{Code: "sor_1234", OrderStatus: OrderStatusDone},
+				{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
+				{Code: "sor_3456", OrderStatus: OrderStatusCanceled},
+			}},
 			want1: []*MarginOrder{
 				{Code: "sor_2345", OrderStatus: OrderStatusInOrder},
 			},
 			want2: nil},
+		{name: "storeにある注文が有効期限切れならcancelAndReleaseを通す",
+			security: virtualSecurity{
+				clock: &testClock{now1: time.Date(2021, 6, 15, 10, 0, 0, 0, time.Local)},
+			},
+			marginService: &testMarginService{getMarginOrders1: []*marginOrder{
+				{Code: "sor_1234", OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 14, 0, 0, 0, 0, time.Local)},
+				{Code: "sor_2345", OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 15, 0, 0, 0, 0, time.Local)},
+				{Code: "sor_3456", OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 16, 0, 0, 0, 0, time.Local)},
+			}},
+			want1: []*MarginOrder{
+				{Code: "sor_1234", OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 14, 0, 0, 0, 0, time.Local)},
+				{Code: "sor_2345", OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 15, 0, 0, 0, 0, time.Local)},
+				{Code: "sor_3456", OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 16, 0, 0, 0, 0, time.Local)},
+			},
+			want2:                     nil,
+			wantCancelAndReleaseCount: 1},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
+			test.security.marginService = test.marginService
 			got1, got2 := test.security.MarginOrders()
-			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) {
+			if !reflect.DeepEqual(test.want1, got1) || !errors.Is(got2, test.want2) || test.wantCancelAndReleaseCount != test.marginService.cancelAndReleaseCount {
 				t.Errorf("%s error\nwant: %+v, %+v\ngot: %+v, %+v\n", t.Name(), test.want1, test.want2, got1, got2)
 			}
 		})
@@ -682,24 +722,26 @@ func Test_virtualSecurity_CancelMarginOrder(t *testing.T) {
 				marginService: &testMarginService{}},
 			arg:  nil,
 			want: NilArgumentError},
-		{name: "キャンセル不可な状態の注文ならエラー",
-			security: &virtualSecurity{
-				clock: &testClock{now1: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
-				marginService: &testMarginService{
-					getMarginOrderByCode1: &marginOrder{Code: "sor_1234", OrderStatus: OrderStatusCanceled},
-					getMarginOrderByCode2: nil,
-				}},
-			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
-			want: UncancellableOrderError},
 		{name: "キャンセル可能な注文ならエラーなし",
 			security: &virtualSecurity{
 				clock: &testClock{now1: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
 				marginService: &testMarginService{
 					getMarginOrderByCode1: &marginOrder{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
 					getMarginOrderByCode2: nil,
+					cancelAndRelease1:     nil,
 				}},
 			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
 			want: nil},
+		{name: "キャンセル可能な注文でもキャンセル時にエラーがでたらエラーを返す",
+			security: &virtualSecurity{
+				clock: &testClock{now1: time.Date(2021, 6, 17, 10, 0, 0, 0, time.Local)},
+				marginService: &testMarginService{
+					getMarginOrderByCode1: &marginOrder{Code: "sor_1234", OrderStatus: OrderStatusInOrder},
+					getMarginOrderByCode2: nil,
+					cancelAndRelease1:     UncancellableOrderError,
+				}},
+			arg:  &CancelOrderRequest{OrderCode: "sor_1234"},
+			want: UncancellableOrderError},
 	}
 
 	for _, test := range tests {
