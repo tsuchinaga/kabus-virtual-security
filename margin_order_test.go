@@ -280,39 +280,39 @@ func Test_marginOrder_activate(t *testing.T) {
 	}
 }
 
-func Test_marginOrder_expired(t *testing.T) {
+func Test_marginOrder_isExpired(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name            string
-		marginOrder     *marginOrder
-		arg             time.Time
-		wantOrderStatus OrderStatus
+		name        string
+		marginOrder *marginOrder
+		arg         time.Time
+		want        bool
 	}{
-		{name: "有効期限がゼロ値なら何もしない",
-			marginOrder:     &marginOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Time{}},
-			arg:             time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
-			wantOrderStatus: OrderStatusInOrder},
-		{name: "有効期限が現在時刻よりも過去なら取消済みにする",
-			marginOrder:     &marginOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 13, 0, 0, 0, time.Local)},
-			arg:             time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
-			wantOrderStatus: OrderStatusCanceled},
-		{name: "有効期限が現在時刻と一致しているなら状態を変えない",
-			marginOrder:     &marginOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local)},
-			arg:             time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
-			wantOrderStatus: OrderStatusInOrder},
-		{name: "有効期限が現在時刻よりも未来なら状態を変えない",
-			marginOrder:     &marginOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 15, 0, 0, 0, time.Local)},
-			arg:             time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
-			wantOrderStatus: OrderStatusInOrder},
+		{name: "有効期限がゼロ値なら期限切れにならない",
+			marginOrder: &marginOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Time{}},
+			arg:         time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
+			want:        false},
+		{name: "有効期限が現在時刻よりも過去なら期限切れになる",
+			marginOrder: &marginOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 0, 0, 0, 0, time.Local)},
+			arg:         time.Date(2021, 6, 8, 13, 24, 0, 0, time.Local),
+			want:        true},
+		{name: "有効期限の年月日が現在時刻の年月日と一致しているなら期限切れにならない",
+			marginOrder: &marginOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 0, 0, 0, 0, time.Local)},
+			arg:         time.Date(2021, 6, 7, 13, 24, 0, 0, time.Local),
+			want:        false},
+		{name: "有効期限の年月日が現在時刻の年月日よりも未来なら期限切れにならない",
+			marginOrder: &marginOrder{OrderStatus: OrderStatusInOrder, ExpiredAt: time.Date(2021, 6, 7, 0, 0, 0, 0, time.Local)},
+			arg:         time.Date(2021, 6, 6, 13, 24, 0, 0, time.Local),
+			want:        false},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			test.marginOrder.expired(test.arg)
-			if !reflect.DeepEqual(test.wantOrderStatus, test.marginOrder.OrderStatus) {
-				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.wantOrderStatus, test.marginOrder.OrderStatus)
+			got := test.marginOrder.isExpired(test.arg)
+			if !reflect.DeepEqual(test.want, got) {
+				t.Errorf("%s error\nwant: %+v\ngot: %+v\n", t.Name(), test.want, got)
 			}
 		})
 	}

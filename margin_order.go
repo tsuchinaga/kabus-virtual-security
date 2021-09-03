@@ -121,22 +121,16 @@ func (o *marginOrder) activate(price *symbolPrice, now time.Time) {
 	}
 }
 
-// expired - 有効期限切れなら注文をキャンセル済みにする
-func (o *marginOrder) expired(now time.Time) {
+// isExpired - 有効期限切れの注文かのチェック
+func (o *marginOrder) isExpired(now time.Time) bool {
 	o.mtx.Lock()
 	defer o.mtx.Unlock()
 
 	// 有効期限がゼロ値なら有効期限なしで何もしない
 	if o.ExpiredAt.IsZero() {
-		return
+		return false
 	}
-
-	// 期限切れの注文なら状態を更新してfalse
-	if now.After(o.ExpiredAt) {
-		o.CanceledAt = now
-		o.OrderStatus = OrderStatusCanceled
-		o.Message = "expired"
-	}
+	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).After(o.ExpiredAt)
 }
 
 // contract - 約定情報を追加し、約定の進捗に合わせてステータスを更新する

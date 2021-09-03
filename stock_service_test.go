@@ -27,6 +27,7 @@ type testStockService struct {
 	holdSellOrderPositions1          error
 	validation1                      error
 	cancelAndRelease1                error
+	cancelAndReleaseCount            int
 }
 
 func (t *testStockService) saveStockOrder(order *stockOrder) {
@@ -77,6 +78,7 @@ func (t *testStockService) validation(*stockOrder, time.Time) error {
 }
 
 func (t *testStockService) cancelAndRelease(*stockOrder, time.Time) error {
+	t.cancelAndReleaseCount++
 	return t.cancelAndRelease1
 }
 

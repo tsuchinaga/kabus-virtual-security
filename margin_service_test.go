@@ -22,6 +22,7 @@ type testMarginService struct {
 	saveMarginOrderHistory      []*marginOrder
 	getMarginPositions1         []*marginPosition
 	cancelAndRelease1           error
+	cancelAndReleaseCount       int
 }
 
 func (t *testMarginService) toMarginOrder(*MarginOrderRequest, time.Time) *marginOrder {
@@ -50,6 +51,7 @@ func (t *testMarginService) removeMarginOrderByCode(string)        {}
 func (t *testMarginService) getMarginPositions() []*marginPosition { return t.getMarginPositions1 }
 func (t *testMarginService) removeMarginPositionByCode(string)     {}
 func (t *testMarginService) cancelAndRelease(*marginOrder, time.Time) error {
+	t.cancelAndReleaseCount++
 	return t.cancelAndRelease1
 }
 
