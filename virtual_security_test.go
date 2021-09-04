@@ -271,33 +271,52 @@ func Test_virtualSecurity_CancelStockOrder(t *testing.T) {
 func Test_virtualSecurity_StockOrder(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name                     string
-		clock                    *testClock
-		priceService             *testPriceService
-		stockService             *testStockService
-		arg                      *StockOrderRequest
-		want1                    *OrderResult
-		want2                    error
-		wantConfirmContractCount int
-		wantSaveStockOrder       []*stockOrder
+		name                      string
+		clock                     *testClock
+		priceService              *testPriceService
+		stockService              *testStockService
+		arg                       *StockOrderRequest
+		want1                     *OrderResult
+		want2                     error
+		wantConfirmContractCount  int
+		wantSaveStockOrder        []*stockOrder
+		wantCancelAndReleaseCount int
 	}{
-		{name: "引数がnilであればエラーを返す", stockService: &testStockService{}, arg: nil, want1: nil, want2: NilArgumentError},
+		{name: "注文一覧に有効期限切れの注文があればcancelAndReleaseを通す",
+			clock: &testClock{now1: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local)},
+			stockService: &testStockService{getStockOrders1: []*stockOrder{
+				{ExpiredAt: time.Date(2021, 6, 23, 0, 0, 0, 0, time.Local)},
+				{ExpiredAt: time.Date(2021, 6, 24, 0, 0, 0, 0, time.Local)},
+				{ExpiredAt: time.Date(2021, 6, 25, 0, 0, 0, 0, time.Local)},
+				{ExpiredAt: time.Date(2021, 6, 26, 0, 0, 0, 0, time.Local)},
+				{ExpiredAt: time.Date(2021, 6, 27, 0, 0, 0, 0, time.Local)},
+			}},
+			arg:                       nil,
+			want1:                     nil,
+			want2:                     NilArgumentError,
+			wantCancelAndReleaseCount: 2},
+		{name: "引数がnilであればエラーを返す",
+			clock:        &testClock{now1: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local)},
+			stockService: &testStockService{getStockOrders1: []*stockOrder{}},
+			arg:          nil,
+			want1:        nil,
+			want2:        NilArgumentError},
 		{name: "validationでエラーがあればエラーを返す",
 			clock:        &testClock{now1: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local)},
-			stockService: &testStockService{toStockOrder1: &stockOrder{}, validation1: InvalidSideError},
+			stockService: &testStockService{toStockOrder1: &stockOrder{}, validation1: InvalidSideError, getStockOrders1: []*stockOrder{}},
 			arg:          &StockOrderRequest{},
 			want1:        nil,
 			want2:        InvalidSideError},
 		{name: "sell注文のholdに失敗したらエラーを返す",
 			clock:        &testClock{now1: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local)},
-			stockService: &testStockService{toStockOrder1: &stockOrder{Side: SideSell}, validation1: nil, holdSellOrderPositions1: NotEnoughOwnedQuantityError},
+			stockService: &testStockService{toStockOrder1: &stockOrder{Side: SideSell}, validation1: nil, holdSellOrderPositions1: NotEnoughOwnedQuantityError, getStockOrders1: []*stockOrder{}},
 			arg:          &StockOrderRequest{Side: SideSell},
 			want1:        nil,
 			want2:        NotEnoughOwnedQuantityError},
 		{name: "該当銘柄の価格情報を取得し、価格情報なし以外のエラーが返されたらエラーを返す",
 			clock:              &testClock{now1: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local)},
 			priceService:       &testPriceService{getBySymbolCode1: nil, getBySymbolCode2: InvalidSymbolCodeError},
-			stockService:       &testStockService{toStockOrder1: &stockOrder{Code: "sor-01", Side: SideSell}},
+			stockService:       &testStockService{toStockOrder1: &stockOrder{Code: "sor-01", Side: SideSell}, getStockOrders1: []*stockOrder{}},
 			arg:                &StockOrderRequest{Side: SideSell},
 			want1:              nil,
 			want2:              InvalidSymbolCodeError,
@@ -305,7 +324,7 @@ func Test_virtualSecurity_StockOrder(t *testing.T) {
 		{name: "該当銘柄の価格情報を取得し、価格情報なしならentryもexitもしない",
 			clock:              &testClock{now1: time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local)},
 			priceService:       &testPriceService{getBySymbolCode1: nil, getBySymbolCode2: NoDataError},
-			stockService:       &testStockService{toStockOrder1: &stockOrder{Code: "sor-01", Side: SideSell}},
+			stockService:       &testStockService{toStockOrder1: &stockOrder{Code: "sor-01", Side: SideSell}, getStockOrders1: []*stockOrder{}},
 			arg:                &StockOrderRequest{Side: SideSell},
 			want1:              &OrderResult{OrderCode: "sor-01"},
 			want2:              nil,
@@ -320,7 +339,7 @@ func Test_virtualSecurity_StockOrder(t *testing.T) {
 				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular,
 			}, getBySymbolCode2: nil},
-			stockService:             &testStockService{toStockOrder1: &stockOrder{Code: "sor-01", SymbolCode: "1234", Side: SideBuy}},
+			stockService:             &testStockService{toStockOrder1: &stockOrder{Code: "sor-01", SymbolCode: "1234", Side: SideBuy}, getStockOrders1: []*stockOrder{}},
 			arg:                      &StockOrderRequest{SymbolCode: "1234", Side: SideBuy},
 			want1:                    &OrderResult{OrderCode: "sor-01"},
 			want2:                    nil,
@@ -336,7 +355,7 @@ func Test_virtualSecurity_StockOrder(t *testing.T) {
 				AskTime:    time.Date(2021, 6, 25, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular,
 			}, getBySymbolCode2: nil},
-			stockService:             &testStockService{toStockOrder1: &stockOrder{Code: "sor-01", SymbolCode: "1234", Side: SideSell}},
+			stockService:             &testStockService{toStockOrder1: &stockOrder{Code: "sor-01", SymbolCode: "1234", Side: SideSell}, getStockOrders1: []*stockOrder{}},
 			arg:                      &StockOrderRequest{SymbolCode: "1234", Side: SideSell},
 			want1:                    &OrderResult{OrderCode: "sor-01"},
 			want2:                    nil,
@@ -352,10 +371,11 @@ func Test_virtualSecurity_StockOrder(t *testing.T) {
 			got1, got2 := security.StockOrder(test.arg)
 			if !reflect.DeepEqual(test.want1, got1) ||
 				!errors.Is(got2, test.want2) ||
-				!reflect.DeepEqual(test.wantConfirmContractCount, test.stockService.confirmContractCount) {
-				t.Errorf("%s error\nwant: %+v, %+v, %+v\ngot: %+v, %+v, %+v\n", t.Name(),
-					test.want1, test.want2, test.wantConfirmContractCount,
-					got1, got2, test.stockService.confirmContractCount)
+				!reflect.DeepEqual(test.wantConfirmContractCount, test.stockService.confirmContractCount) ||
+				!reflect.DeepEqual(test.wantCancelAndReleaseCount, test.stockService.cancelAndReleaseCount) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v, %+v\ngot: %+v, %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.want2, test.wantConfirmContractCount, test.wantCancelAndReleaseCount,
+					got1, got2, test.stockService.confirmContractCount, test.stockService.cancelAndReleaseCount)
 			}
 		})
 	}
@@ -769,18 +789,37 @@ func Test_virtualSecurity_MarginOrder(t *testing.T) {
 		wantSaveMarginOrderHistory []*marginOrder
 		wantConfirmContract        int
 		wantHoldExitOrderPositions int
+		wantCancelAndReleaseCount  int
 	}{
-		{name: "引数がnilであればエラーを返す", marginService: &testMarginService{}, arg: nil, want1: nil, want2: NilArgumentError},
+		{name: "注文一覧に有効期限切れの注文があればcancelAndReleaseを通す",
+			clock: &testClock{now1: time.Date(2021, 8, 23, 10, 0, 0, 0, time.Local)},
+			marginService: &testMarginService{getMarginOrders1: []*marginOrder{
+				{ExpiredAt: time.Date(2021, 8, 21, 0, 0, 0, 0, time.Local)},
+				{ExpiredAt: time.Date(2021, 8, 22, 0, 0, 0, 0, time.Local)},
+				{ExpiredAt: time.Date(2021, 8, 23, 0, 0, 0, 0, time.Local)},
+				{ExpiredAt: time.Date(2021, 8, 24, 0, 0, 0, 0, time.Local)},
+				{ExpiredAt: time.Date(2021, 8, 25, 0, 0, 0, 0, time.Local)},
+			}},
+			arg:                       nil,
+			want1:                     nil,
+			want2:                     NilArgumentError,
+			wantCancelAndReleaseCount: 2},
+		{name: "引数がnilであればエラーを返す",
+			clock:         &testClock{now1: time.Date(2021, 8, 23, 10, 0, 0, 0, time.Local)},
+			marginService: &testMarginService{getMarginOrders1: []*marginOrder{}},
+			arg:           nil,
+			want1:         nil,
+			want2:         NilArgumentError},
 		{name: "validationでエラーがあればエラーを返す",
 			clock:         &testClock{now1: time.Date(2021, 8, 23, 10, 0, 0, 0, time.Local)},
-			marginService: &testMarginService{toMarginOrder1: &marginOrder{}, validation1: InvalidTradeTypeError},
+			marginService: &testMarginService{toMarginOrder1: &marginOrder{}, validation1: InvalidTradeTypeError, getMarginOrders1: []*marginOrder{}},
 			arg:           &MarginOrderRequest{},
 			want1:         nil,
 			want2:         InvalidTradeTypeError},
 		{name: "該当銘柄の価格情報を取得し、価格情報がなくエラーが返されたらエラーを返す",
 			clock:                      &testClock{now1: time.Date(2021, 8, 23, 10, 0, 0, 0, time.Local)},
 			priceService:               &testPriceService{getBySymbolCode1: nil, getBySymbolCode2: InvalidSymbolCodeError},
-			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeEntry}},
+			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeEntry}, getMarginOrders1: []*marginOrder{}},
 			arg:                        &MarginOrderRequest{TradeType: TradeTypeEntry},
 			want1:                      nil,
 			want2:                      InvalidSymbolCodeError,
@@ -788,7 +827,7 @@ func Test_virtualSecurity_MarginOrder(t *testing.T) {
 		{name: "該当銘柄の価格情報を取得し、価格情報がなければ、注文の保存を行ない、注文結果を返す",
 			clock:                      &testClock{now1: time.Date(2021, 8, 23, 10, 0, 0, 0, time.Local)},
 			priceService:               &testPriceService{getBySymbolCode1: nil, getBySymbolCode2: NoDataError},
-			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeEntry}},
+			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeEntry}, getMarginOrders1: []*marginOrder{}},
 			arg:                        &MarginOrderRequest{TradeType: TradeTypeEntry},
 			want1:                      &OrderResult{OrderCode: "sor-1"},
 			want2:                      nil,
@@ -803,7 +842,7 @@ func Test_virtualSecurity_MarginOrder(t *testing.T) {
 				AskTime:    time.Date(2021, 8, 23, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular,
 			}, getBySymbolCode2: nil},
-			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeEntry}},
+			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeEntry}, getMarginOrders1: []*marginOrder{}},
 			arg:                        &MarginOrderRequest{TradeType: TradeTypeEntry},
 			want1:                      &OrderResult{OrderCode: "sor-1"},
 			want2:                      nil,
@@ -819,7 +858,7 @@ func Test_virtualSecurity_MarginOrder(t *testing.T) {
 				AskTime:    time.Date(2021, 8, 23, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular,
 			}, getBySymbolCode2: nil},
-			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeEntry}, confirmContract1: NilArgumentError},
+			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeEntry}, confirmContract1: NilArgumentError, getMarginOrders1: []*marginOrder{}},
 			arg:                        &MarginOrderRequest{TradeType: TradeTypeEntry},
 			want1:                      &OrderResult{OrderCode: "sor-1"},
 			want2:                      nil,
@@ -835,7 +874,7 @@ func Test_virtualSecurity_MarginOrder(t *testing.T) {
 				AskTime:    time.Date(2021, 8, 23, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular,
 			}, getBySymbolCode2: nil},
-			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeExit}},
+			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeExit}, getMarginOrders1: []*marginOrder{}},
 			arg:                        &MarginOrderRequest{TradeType: TradeTypeExit},
 			want1:                      &OrderResult{OrderCode: "sor-1"},
 			want2:                      nil,
@@ -852,7 +891,7 @@ func Test_virtualSecurity_MarginOrder(t *testing.T) {
 				AskTime:    time.Date(2021, 8, 23, 10, 0, 0, 0, time.Local),
 				kind:       PriceKindRegular,
 			}, getBySymbolCode2: nil},
-			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeExit}, confirmContract1: NilArgumentError},
+			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeExit}, confirmContract1: NilArgumentError, getMarginOrders1: []*marginOrder{}},
 			arg:                        &MarginOrderRequest{TradeType: TradeTypeExit},
 			want1:                      &OrderResult{OrderCode: "sor-1"},
 			want2:                      nil,
@@ -862,7 +901,7 @@ func Test_virtualSecurity_MarginOrder(t *testing.T) {
 		{name: "exit注文でもholdに失敗したらエラー",
 			clock:                      &testClock{now1: time.Date(2021, 8, 23, 10, 0, 0, 0, time.Local), getStockSession1: SessionMorning},
 			priceService:               &testPriceService{},
-			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeExit}, holdExitOrderPositions1: InvalidExitPositionError},
+			marginService:              &testMarginService{toMarginOrder1: &marginOrder{Code: "sor-1", TradeType: TradeTypeExit}, holdExitOrderPositions1: InvalidExitPositionError, getMarginOrders1: []*marginOrder{}},
 			arg:                        &MarginOrderRequest{TradeType: TradeTypeExit},
 			want1:                      nil,
 			want2:                      InvalidExitPositionError,
@@ -879,10 +918,11 @@ func Test_virtualSecurity_MarginOrder(t *testing.T) {
 				!errors.Is(got2, test.want2) ||
 				!reflect.DeepEqual(test.wantConfirmContract, test.marginService.confirmContractCount) ||
 				!reflect.DeepEqual(test.wantHoldExitOrderPositions, test.marginService.holdExitOrderPositionsCount) ||
-				!reflect.DeepEqual(test.wantSaveMarginOrderHistory, test.marginService.saveMarginOrderHistory) {
-				t.Errorf("%s error\nwant: %+v, %+v, %+v, %+v, %+v\ngot: %+v, %+v, %+v, %+v, %+v\n", t.Name(),
-					test.want1, test.want2, test.wantConfirmContract, test.wantHoldExitOrderPositions, test.wantSaveMarginOrderHistory,
-					got1, got2, test.marginService.confirmContractCount, test.marginService.holdExitOrderPositionsCount, test.marginService.saveMarginOrderHistory)
+				!reflect.DeepEqual(test.wantSaveMarginOrderHistory, test.marginService.saveMarginOrderHistory) ||
+				!reflect.DeepEqual(test.wantCancelAndReleaseCount, test.marginService.cancelAndReleaseCount) {
+				t.Errorf("%s error\nwant: %+v, %+v, %+v, %+v, %+v, %+v\ngot: %+v, %+v, %+v, %+v, %+v, %+v\n", t.Name(),
+					test.want1, test.want2, test.wantConfirmContract, test.wantHoldExitOrderPositions, test.wantSaveMarginOrderHistory, test.wantCancelAndReleaseCount,
+					got1, got2, test.marginService.confirmContractCount, test.marginService.holdExitOrderPositionsCount, test.marginService.saveMarginOrderHistory, test.marginService.cancelAndReleaseCount)
 			}
 		})
 	}

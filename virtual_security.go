@@ -67,12 +67,18 @@ func (s *virtualSecurity) RegisterPrice(symbolPrice RegisterPriceRequest) error 
 
 // StockOrder - 現物注文
 func (s *virtualSecurity) StockOrder(order *StockOrderRequest) (*OrderResult, error) {
+	now := s.clock.now()
+
+	// 事前処理として、管理中の注文のうち有効期限切れのものをcancelしておく
+	for _, order := range s.stockService.getStockOrders() {
+		if order.isExpired(now) {
+			_ = s.stockService.cancelAndRelease(order, now)
+		}
+	}
+
 	if order == nil {
 		return nil, NilArgumentError
 	}
-
-	now := s.clock.now()
-
 	// 注文番号発行
 	o := s.stockService.toStockOrder(order, now)
 
@@ -190,11 +196,18 @@ func (s *virtualSecurity) StockPositions() ([]*StockPosition, error) {
 
 // MarginOrder - 信用注文
 func (s *virtualSecurity) MarginOrder(order *MarginOrderRequest) (*OrderResult, error) {
+	now := s.clock.now()
+
+	// 事前処理として、管理中の注文のうち有効期限切れのものをcancelしておく
+	for _, order := range s.marginService.getMarginOrders() {
+		if order.isExpired(now) {
+			_ = s.marginService.cancelAndRelease(order, now)
+		}
+	}
+
 	if order == nil {
 		return nil, NilArgumentError
 	}
-
-	now := s.clock.now()
 
 	// 内部用注文に変換
 	o := s.marginService.toMarginOrder(order, now)
